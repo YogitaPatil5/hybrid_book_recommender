@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}About — BookMind{% endblock %}
+
+{% block content %}
+<section class="section about-section">
+  <div class="container about-container">
+    <div class="page-heading">
+      <h1><i class="fa-solid fa-circle-info"></i> About BookMind</h1>
+      <p>How the recommender works under the hood.</p>
+    </div>
+
+    <div class="stat-cards">
+      <div class="stat-card">
+        <i class="fa-solid fa-book" style="color:var(--accent-blue)"></i>
+        <span class="stat-big">{{ "{:,}".format(stats.total_books) }}</span>
+        <span class="stat-label">Books indexed</span>
+      </div>
+      <div class="stat-card">
+        <i class="fa-solid fa-tags" style="color:var(--accent-purple)"></i>
+        <span class="stat-big">{{ stats.total_genres }}</span>
+        <span class="stat-label">Genres</span>
+      </div>
+      {% if stats.knn_available %}
+      <div class="stat-card">
+        <i class="fa-solid fa-star" style="color:var(--accent-orange)"></i>
+        <span class="stat-big">{{ "{:,}".format(stats.total_ratings) }}</span>
+        <span class="stat-label">Ratings analysed</span>
+      </div>
+      <div class="stat-card">
+        <i class="fa-solid fa-users" style="color:var(--accent-green)"></i>
+        <span class="stat-big">{{ "{:,}".format(stats.total_users) }}</span>
+        <span class="stat-label">Active readers</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="about-block">
+      <h2><i class="fa-solid fa-layer-group"></i> Tech Stack</h2>
+      <div class="tech-grid">
+        <div class="tech-item"><i class="fa-brands fa-python"></i> Python 3</div>
+        <div class="tech-item"><i class="fa-solid fa-bolt"></i> FastAPI</div>
+        <div class="tech-item"><i class="fa-solid fa-brain"></i> Sentence-Transformers</div>
+        <div class="tech-item"><i class="fa-solid fa-magnifying-glass-chart"></i> FAISS</div>
+        <div class="tech-item"><i class="fa-solid fa-table"></i> Pandas</div>
+        <div class="tech-item"><i class="fa-solid fa-diagram-project"></i> scikit-learn</div>
+      </div>
+    </div>
+
+    <div class="about-block">
+      <h2><i class="fa-solid fa-gears"></i> Semantic Search Engine</h2>
+      <ol class="about-list">
+        <li><strong>Data preparation</strong> — the raw catalogue is validated, cleaned and de-duplicated.</li>
+        <li><strong>Genre tagging</strong> — a local LLM (via Ollama) assigns one genre from a fixed taxonomy; a keyword classifier is the offline fallback.</li>
+        <li><strong>Embeddings</strong> — each book's title, genre and description are encoded by <code>{{ stats.embedding_model or "all-MiniLM-L6-v2" }}</code> into a normalised vector.</li>
+        <li><strong>FAISS index</strong> — inner-product search over normalised vectors equals cosine similarity; genre filters run inside the index.</li>
+        <li><strong>Query time</strong> — your query is embedded the same way and the closest books are returned, de-duplicated across editions.</li>
+      </ol>
+    </div>
+
+    {% if stats.knn_available %}
+    <div class="about-block">
+      <h2><i class="fa-solid fa-users-viewfinder"></i> Collaborative Filtering</h2>
+      <ol class="about-list">
+        <li><strong>Data</strong> — Book-Crossing: ~1.15M ratings joined with the book catalogue; HTML entities, ISBNs and years cleaned.</li>
+        <li><strong>Implicit feedback</strong> — a rating of 0 means "interacted, no score"; it is never confused with "never read" (mode: <code>{{ stats.knn_mode or "binary" }}</code>).</li>
+        <li><strong>Filtering</strong> — engaged readers and books read by enough of them; editions merged by title + author.</li>
+        <li><strong>Model</strong> — item–item k-NN (cosine) over a sparse book × reader matrix covering <strong>{{ "{:,}".format(stats.knn_books) }} books</strong>.</li>
+        <li><strong>Evaluation</strong> — Hit-Rate@5 on held-out readers, compared with a popularity baseline (<code>bookmind-pipeline evaluate-knn</code>).</li>
+      </ol>
+    </div>
+    {% endif %}
+
+    {% if stats.index_built_at %}
+    <p class="section-sub">Index built: {{ stats.index_built_at[:19].replace('T', ' ') }} UTC</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

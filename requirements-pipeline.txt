@@ -1,0 +1,6 @@
+# Offline data-pipeline extras (genre classification with a local LLM).
+# Install:  pip install -r requirements-pipeline.txt
+-r requirements.txt
+ollama>=0.3,<1.0
+tqdm>=4.66,<5.0
+kagglehub>=0.3,<2.0

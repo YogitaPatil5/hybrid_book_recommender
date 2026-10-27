@@ -1,0 +1,58 @@
+# Deploys this repository to the Hugging Face Space {space} from GitHub's servers,
+# so the computer you work on never has to connect to huggingface.co itself.
+#
+# One-time setup: repository Settings -> Secrets and variables -> Actions ->
+# New repository secret, name HF_TOKEN, value = a Hugging Face WRITE token.
+# After that every push to `main` redeploys; "Run workflow" on the Actions tab works too.
+name: Deploy to Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-to-hf
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the Hugging Face client
+        run: python -m pip install --upgrade "huggingface_hub>=0.30"
+
+      - name: Upload to {space}
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: {space}
+        run: |
+          python - <<'PY'
+          import os, sys
+          from huggingface_hub import HfApi
+
+          token = os.environ.get("HF_TOKEN", "")
+          if not token:
+              sys.exit("HF_TOKEN secret is missing: Settings -> Secrets and variables -> Actions")
+          space = os.environ["HF_SPACE"]
+          api = HfApi(token=token)
+          print("Logged in to Hugging Face as", api.whoami()["name"])
+          api.create_repo(space, repo_type="space", space_sdk="gradio", exist_ok=True)
+          api.upload_folder(
+              folder_path=".",
+              repo_id=space,
+              repo_type="space",
+              ignore_patterns=[".git/*", ".github/*"],
+              # remove leftovers of older layouts (folders) on the Space
+              delete_patterns=["artifacts/**", "bookmind/**", "src/**"],
+              commit_message=f"Deploy from GitHub {os.environ.get('GITHUB_SHA', '')[:7]}",
+          )
+          print(f"Deployed. Build logs: https://huggingface.co/spaces/{space}")
+          PY

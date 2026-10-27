@@ -1,0 +1,26 @@
+{
+  "mode": "binary",
+  "raw_books": 270997,
+  "raw_ratings": 1149725,
+  "joined_ratings": 1031616,
+  "active_users": 806,
+  "books": 637,
+  "interactions": 52615,
+  "density": 0.102479,
+  "min_user_ratings": 200,
+  "min_book_ratings": 50,
+  "sklearn_version": "1.9.1",
+  "library_versions": {
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "scikit-learn": "1.9.1",
+    "scipy": "1.18.1"
+  },
+  "trained_at": "2026-10-27T17:57:29.979689+00:00",
+  "checksums": {
+    "model_knn.pkl": "7aab43c3e508c76d13eeab2f403cee293839230549b07c8737c42d28b397074b",
+    "book_names.pkl": "a3f388fc95852fbc9a9a8cf86a35e3e3e4aa84a50f4dc8c9aa7fed51a38dc5b0",
+    "final_rating.pkl": "ffce7dc0591d96d61777cd0c7e0614e9a96cdbd3045f929974bfac614b0c3beb",
+    "book_pivot.pkl": "a8f6725f58752a884a71e42496e5dd8bd9e9b2cb4888ac3cbfbcc85ab54a9eb8"
+  }
+}

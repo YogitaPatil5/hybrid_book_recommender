@@ -1,0 +1,58 @@
+# Local / single-host deployment.
+#
+#   docker compose up --build -d                     # web app on :8000
+#   docker compose --profile pipeline run --rm pipeline download
+#   docker compose --profile pipeline run --rm pipeline all --classifier keyword
+#
+# The pipeline writes artifacts into ./artifacts, which the web service mounts.
+
+services:
+  web:
+    build:
+      context: .
+      args:
+        PRELOAD_MODEL: "true"
+    image: bookmind:latest
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      BOOKMIND_ENV: production
+      BOOKMIND_WORKERS: "2"
+      BOOKMIND_TRUSTED_HOSTS: '["*"]'
+      BOOKMIND_RATE_LIMIT_STORAGE_URI: redis://redis:6379
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  pipeline:
+    image: bookmind:latest
+    profiles: ["pipeline"]
+    entrypoint: ["bookmind-pipeline"]
+    environment:
+      BOOKMIND_ENV: production
+      BOOKMIND_OLLAMA_HOST: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./data:/app/data
+      - ./artifacts:/app/artifacts
+
+  redis:
+    image: redis:7.2-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped

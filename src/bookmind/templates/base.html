@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="BookMind — semantic book search and recommendations." />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0b1020" media="(prefers-color-scheme: dark)" />
+  {# Applies the saved / system theme before first paint (no flash). #}
+  <script src="{{ url_for('static', path='js/theme.js') }}?v={{ app_version }}"></script>
+  <title>{% block title %}BookMind — AI Book Recommender{% endblock %}</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}?v={{ app_version }}" />
+  {% block extra_head %}{% endblock %}
+</head>
+<body data-placeholder="{{ url_for('static', path='img/no-cover.svg') }}">
+{% set path = request.url.path %}
+<nav class="navbar">
+  <div class="nav-container">
+    <a href="{{ url_for('home') }}" class="nav-logo">
+      <i class="fa-solid fa-book-open-reader"></i>
+      <span>BookMind</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="{{ url_for('home') }}" class="{% if path == '/' %}active{% endif %}">
+        <i class="fa-solid fa-house"></i> Home
+      </a></li>
+      <li><a href="{{ url_for('search') }}" class="{% if path.startswith('/search') %}active{% endif %}">
+        <i class="fa-solid fa-magnifying-glass"></i> Search
+      </a></li>
+      <li><a href="{{ url_for('recommend') }}" class="{% if path.startswith('/recommend') %}active{% endif %}">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Recommend
+      </a></li>
+      <li><a href="{{ url_for('about') }}" class="{% if path.startswith('/about') %}active{% endif %}">
+        <i class="fa-solid fa-circle-info"></i> About
+      </a></li>
+    </ul>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" title="Switch theme">
+      {# Inline SVG icons: work even if the icon CDN is unavailable. #}
+      <svg class="icon-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    </button>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+{% if not search_ready %}
+<div class="container">
+  <div class="alert alert-error" role="status">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <div><strong>Search index not built.</strong>
+      <p class="alert-hint">Run <code>python -m bookmind.pipeline.cli all --classifier keyword</code> and restart the server.</p>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <p>
+      <i class="fa-solid fa-book-open-reader"></i>
+      <strong>BookMind Pro</strong> — FastAPI · Sentence-Transformers · FAISS
+    </p>
+    <p class="footer-sub">v{{ app_version }} · Semantic search{% if knn_available %} + collaborative filtering{% endif %}</p>
+  </div>
+</footer>
+
+<script src="{{ url_for('static', path='js/main.js') }}?v={{ app_version }}" defer></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

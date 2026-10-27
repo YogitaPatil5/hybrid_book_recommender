@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cover, buy_links, error_alert with context %}
+
+{% block title %}Recommend — BookMind{% endblock %}
+
+{% block content %}
+<section class="recommend-hero">
+  <div class="container">
+    <div class="page-heading">
+      <h1><i class="fa-solid fa-wand-magic-sparkles"></i> Book Recommender</h1>
+      <p>Enter a book title and we'll suggest 5 similar books.</p>
+    </div>
+
+    <div class="search-card">
+      <form method="POST" action="{{ url_for('recommend_post') }}" id="searchForm" autocomplete="off" data-loading-text="Thinking…">
+        <div class="search-bar-wrap">
+          <div class="search-input-wrap">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="bookInput" name="book_name" class="search-input"
+                   placeholder="e.g. The Hobbit" value="{{ searched_book }}"
+                   maxlength="300" required spellcheck="false"
+                   aria-label="Book title" aria-autocomplete="list" aria-controls="autocompleteList" />
+            <button type="button" class="clear-btn" id="clearBtn" title="Clear" aria-label="Clear">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <ul class="autocomplete-list" id="autocompleteList" role="listbox"></ul>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg search-submit" id="submitBtn">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <span>Find Similar Books</span>
+        </button>
+      </form>
+    </div>
+
+    {% if error %}{{ error_alert(error, "Pick a title from the autocomplete drop-down for best results.") }}{% endif %}
+  </div>
+</section>
+
+{% if recommendations %}
+<section class="section results-section">
+  <div class="container">
+    <div class="results-header">
+      <h2 class="section-title">
+        <i class="fa-solid fa-thumbs-up" style="color:var(--accent-green)"></i>
+        Because you liked <em>{{ searched_book }}</em>
+      </h2>
+      <p class="section-sub">
+        {% if engine_used == 'knn' %}Readers who rated this book also loved these
+        {% else %}Books with the most similar themes and content{% endif %}
+      </p>
+    </div>
+
+    <div class="results-grid">
+      {% for book in recommendations %}
+      <div class="result-card" style="animation-delay: {{ loop.index0 * 0.1 }}s">
+        <div class="result-rank">#{{ loop.index }}</div>
+        <div class="result-cover-wrap">{{ cover(book, 'result-cover') }}</div>
+        <div class="result-info">
+          <h3 class="result-title">{{ book.title }}</h3>
+          <p class="result-author"><i class="fa-solid fa-pen-nib"></i> {{ book.author }}</p>
+          {{ buy_links(book) }}
+          <a class="btn btn-ghost btn-sm mt-1" href="{{ url_for('recommend') }}?q={{ book.title | urlencode }}" title="Find books similar to this one">
+            <i class="fa-solid fa-rotate"></i> Find similar
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="new-search-wrap">
+      <a class="btn btn-ghost" href="#searchForm"><i class="fa-solid fa-arrow-up"></i> Search again</a>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if not recommendations and not error %}
+<section class="section how-section">
+  <div class="container">
+    <div class="section-header"><h2 class="section-title">How It Works</h2></div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-icon"><i class="fa-solid fa-keyboard"></i></div>
+        <h3>1. Enter a Title</h3>
+        <p>Type the name of any book you've enjoyed.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-icon"><i class="fa-solid fa-gears"></i></div>
+        <h3>2. AI Analysis</h3>
+        <p>{% if knn_available %}Collaborative filtering on reader ratings, with semantic similarity as a fallback.{% else %}Semantic embeddings compare the book's themes against the whole catalogue.{% endif %}</p>
+      </div>
+      <div class="step-card">
+        <div class="step-icon"><i class="fa-solid fa-book-open"></i></div>
+        <h3>3. Get Picks</h3>
+        <p>We surface the 5 closest matches.</p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', path='js/autocomplete.js') }}?v={{ app_version }}" defer></script>
+{% endblock %}

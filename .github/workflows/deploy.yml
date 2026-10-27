@@ -1,0 +1,73 @@
+# Continuous deployment: after the CI workflow passes on `main`, build the Gradio Space
+# folder (scripts/prepare_hf_space.py) and upload it to Hugging Face from GitHub's servers.
+#
+# One-time setup in the GitHub repository:
+#   Settings -> Secrets and variables -> Actions
+#     * Secrets   -> New repository secret:   HF_TOKEN = a Hugging Face WRITE token
+#     * Variables -> New repository variable: HF_SPACE = <hf-username>/<space-name>
+# Without HF_TOKEN the job is skipped (CI still runs), so forks don't fail.
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-hf-space
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  hugging-face:
+    name: Hugging Face Space
+    # Only after a green CI run (or when started by hand from the Actions tab).
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_SPACE: ${{ vars.HF_SPACE || 'Yogita4/bookmind' }}
+    steps:
+      - name: Check the Hugging Face token is configured
+        id: token
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::warning::HF_TOKEN secret not set - skipping deployment (Settings -> Secrets and variables -> Actions)."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.token.outputs.ok == 'true'
+        with:
+          # deploy exactly the commit that passed CI
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-python@v5
+        if: steps.token.outputs.ok == 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Install the deploy tools
+        if: steps.token.outputs.ok == 'true'
+        run: python -m pip install --upgrade "huggingface_hub>=0.30" packaging
+
+      - name: Build the Space folder and upload it
+        if: steps.token.outputs.ok == 'true'
+        run: python scripts/prepare_hf_space.py --upload "$HF_SPACE"
+
+      - name: Summary
+        if: steps.token.outputs.ok == 'true'
+        run: |
+          {
+            echo "### Deployed to Hugging Face"
+            echo "- Space: https://huggingface.co/spaces/$HF_SPACE"
+            echo "- Commit: \`${{ github.event.workflow_run.head_sha || github.sha }}\`"
+            echo "- The Space rebuilds in about 5-10 minutes."
+          } >> "$GITHUB_STEP_SUMMARY"

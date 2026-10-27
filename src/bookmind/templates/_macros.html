@@ -1,0 +1,33 @@
+{# Reusable UI fragments. Jinja autoescaping protects every value here. #}
+
+{% macro cover(book, css_class) -%}
+  {%- if book.image_url -%}
+    <img class="{{ css_class }}" src="{{ book.image_url }}" alt="Cover of {{ book.title }}" loading="lazy" />
+  {%- else -%}
+    <img class="{{ css_class }}" src="{{ url_for('static', path='img/no-cover.svg') }}" alt="No cover available" loading="lazy" />
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro buy_links(book) -%}
+<div class="buy-links">
+  <a href="{{ book.buy_links.amazon }}" target="_blank" rel="noopener noreferrer" class="buy-link buy-amazon" title="Search on Amazon" aria-label="Search on Amazon">
+    <i class="fa-brands fa-amazon"></i>
+  </a>
+  <a href="{{ book.buy_links.flipkart }}" target="_blank" rel="noopener noreferrer" class="buy-link buy-flipkart" title="Search on Flipkart" aria-label="Search on Flipkart">
+    <i class="fa-solid fa-cart-shopping"></i>
+  </a>
+  <a href="{{ book.buy_links.google_books }}" target="_blank" rel="noopener noreferrer" class="buy-link buy-google" title="Search on Google Books" aria-label="Search on Google Books">
+    <i class="fa-brands fa-google"></i>
+  </a>
+</div>
+{%- endmacro %}
+
+{% macro error_alert(message, hint=None) -%}
+<div class="alert alert-error" role="alert">
+  <i class="fa-solid fa-circle-exclamation"></i>
+  <div>
+    <strong>Oops!</strong> {{ message }}
+    {% if hint %}<p class="alert-hint">{{ hint }}</p>{% endif %}
+  </div>
+</div>
+{%- endmacro %}

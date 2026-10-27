@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "embedding_backend": "sentence-transformers",
+  "embedding_model": "all-MiniLM-L6-v2",
+  "dim": 384,
+  "num_books": 6323,
+  "genres": [
+    "Biography & Memoir",
+    "Business & Economics",
+    "Children's",
+    "Fantasy",
+    "Historical Fiction",
+    "History",
+    "Horror",
+    "Humor",
+    "Literary Fiction",
+    "Mystery",
+    "Other",
+    "Philosophy & Religion",
+    "Poetry",
+    "Romance",
+    "Science & Nature",
+    "Science Fiction",
+    "Self-Help",
+    "Thriller",
+    "True Crime",
+    "Young Adult"
+  ],
+  "built_at": "2026-10-27T16:57:01.149357+00:00",
+  "index_sha256": "459fb3fa584e3b08f75be94c8f85507c401a7020f57e6de694ae02b42c0163b7",
+  "meta_sha256": "851b26a7d691ab7b8e8b04c8e2653c9a794cb5bb9a1dd37a0e152f7543ae986e"
+}

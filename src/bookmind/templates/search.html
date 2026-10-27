@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cover, buy_links, error_alert with context %}
+
+{% block title %}Search — BookMind{% endblock %}
+
+{% block content %}
+<section class="recommend-hero">
+  <div class="container">
+    <div class="page-heading">
+      <h1><i class="fa-solid fa-magnifying-glass"></i> Search Any Book</h1>
+      <p>Search by title, author, or describe what you're in the mood for — e.g. "a slow-burn mystery set in winter". Or leave the box empty and just pick a genre to browse it.</p>
+    </div>
+
+    <div class="search-card">
+      <form method="GET" action="{{ url_for('search') }}" id="searchForm" autocomplete="off" data-loading-text="Searching…">
+        <div class="search-bar-wrap">
+          <div class="search-input-wrap">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="bookInput" name="q" class="search-input"
+                   placeholder="e.g. Harry Potter, or 'a story about forgiveness', or 'mystery'"
+                   value="{{ query }}" maxlength="300" spellcheck="false"
+                   aria-label="Search query" aria-autocomplete="list" aria-controls="autocompleteList" />
+            <button type="button" class="clear-btn" id="clearBtn" title="Clear" aria-label="Clear search">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <ul class="autocomplete-list" id="autocompleteList" role="listbox"></ul>
+        </div>
+
+        <div class="genre-filter-wrap">
+          <select name="genre" id="genreSelect" class="genre-select" aria-label="Genre filter">
+            <option value="All" {% if selected_genre == 'All' %}selected{% endif %}>All Genres</option>
+            {% for g in all_genres %}
+            <option value="{{ g }}" {% if selected_genre == g %}selected{% endif %}>{{ g }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg search-submit" id="submitBtn">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <span>Search</span>
+        </button>
+      </form>
+    </div>
+
+    {% if error %}{{ error_alert(error) }}{% endif %}
+  </div>
+</section>
+
+{% if results %}
+<section class="section results-section">
+  <div class="container">
+    <div class="results-header">
+      <h2 class="section-title">
+        <i class="fa-solid fa-book-open" style="color:var(--accent-green)"></i>
+        {% if query %}Results for <em>"{{ query }}"</em>{% if selected_genre and selected_genre != 'All' %} in <em>{{ selected_genre }}</em>{% endif %}
+        {% else %}Most popular in <em>{{ selected_genre }}</em>{% endif %}
+      </h2>
+      <p class="section-sub">{{ results | length }} book{{ 's' if results | length != 1 else '' }} found</p>
+    </div>
+
+    <div class="results-grid">
+      {% for book in results %}
+      <div class="result-card" style="animation-delay: {{ loop.index0 * 0.05 }}s">
+        <div class="result-cover-wrap">{{ cover(book, 'result-cover') }}</div>
+        <div class="result-info">
+          <h3 class="result-title">{{ book.title }}</h3>
+          <p class="result-author"><i class="fa-solid fa-pen-nib"></i> {{ book.author }}</p>
+          <span class="tag tag-count">{{ book.genre }}</span>
+          {% if book.description %}<p class="result-desc">{{ book.description }}</p>{% endif %}
+          {{ buy_links(book) }}
+          <a class="btn btn-ghost btn-sm mt-1" href="{{ url_for('recommend') }}?q={{ book.title | urlencode }}">
+            <i class="fa-solid fa-rotate"></i> Find similar
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if not results and not error and not query %}
+<section class="section how-section">
+  <div class="container">
+    <div class="section-header"><h2 class="section-title">Three Ways to Search</h2></div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-icon"><i class="fa-solid fa-font"></i></div>
+        <h3>By Title</h3>
+        <p>Type a book name — pick from the dropdown or search directly.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-icon"><i class="fa-solid fa-tags"></i></div>
+        <h3>By Genre</h3>
+        <p>Filter to Fantasy, Mystery, History and more.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-icon"><i class="fa-solid fa-comment"></i></div>
+        <h3>By Vibe</h3>
+        <p>Describe a mood or theme — we match meaning, not just keywords.</p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', path='js/autocomplete.js') }}?v={{ app_version }}" defer></script>
+{% endblock %}

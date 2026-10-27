@@ -1,0 +1,87 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bookmind"
+version = "2.2.0"
+description = "BookMind Pro — semantic book search & recommendation service"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Yogita Patil" }]
+license = { text = "MIT" }
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Framework :: FastAPI",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.scripts]
+bookmind-pipeline = "bookmind.pipeline.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+bookmind = ["templates/*.html", "static/**/*"]
+
+# ── pytest ───────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+  "integration: tests that exercise the full app / pipeline",
+  "slow: tests that take more than a second",
+]
+filterwarnings = ["error::DeprecationWarning:bookmind.*"]
+
+[tool.coverage.run]
+source = ["bookmind"]
+branch = true
+omit = []
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+]
+
+# ── ruff ─────────────────────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "S", "SIM", "C4", "RUF", "N", "PTH", "RET", "ARG"]
+ignore = ["S101", "B008", "B905", "RUF012"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "ARG", "PTH", "N802"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["bookmind"]
+
+# ── mypy ─────────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.10"
+mypy_path = "src"
+packages = ["bookmind"]
+strict = true
+warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["faiss", "faiss.*", "sentence_transformers.*", "sklearn.*", "scipy.*",
+          "ollama", "ollama.*", "pyarrow.*", "kagglehub", "kagglehub.*"]
+ignore_missing_imports = true

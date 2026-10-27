@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cover, buy_links with context %}
+
+{% block title %}BookMind — Discover Your Next Favourite Book{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge"><i class="fa-solid fa-robot"></i> AI-Powered</div>
+    <h1 class="hero-title">Find Books <br/><span class="gradient-text">You'll Love</span></h1>
+    <p class="hero-subtitle">
+      Search by title, author, genre — or just describe the mood you're in. Our semantic
+      engine understands meaning, not just keywords.
+    </p>
+    <div class="hero-actions">
+      <a href="{{ url_for('search') }}" class="btn btn-primary btn-lg">
+        <i class="fa-solid fa-magnifying-glass"></i> Search Books
+      </a>
+      <a href="#popular" class="btn btn-ghost btn-lg">
+        <i class="fa-solid fa-fire"></i> Popular Books
+      </a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><span class="stat-num">{{ "{:,}".format(stats.total_books) }}</span><span class="stat-label">Books</span></div>
+      <div class="stat"><span class="stat-num">{{ stats.total_genres }}</span><span class="stat-label">Genres</span></div>
+      {% if stats.knn_available %}
+      <div class="stat"><span class="stat-num">{{ "{:,}".format(stats.total_ratings) }}</span><span class="stat-label">Ratings</span></div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="hero-illustration">
+    <div class="floating-cards">
+      {% for book in popular_books[:3] %}
+      <div class="float-card fc-{{ loop.index }}">{{ cover(book, '') }}</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section" id="popular">
+  <div class="container">
+    <div class="section-header">
+      <h2 class="section-title">
+        <i class="fa-solid fa-fire-flame-curved" style="color:var(--accent-orange)"></i>
+        Trending &amp; Popular
+      </h2>
+      <p class="section-sub">Books loved by the most readers</p>
+    </div>
+
+    {% if popular_books %}
+    <div class="books-grid" id="booksGrid">
+      {% for book in popular_books %}
+      <div class="book-card">
+        <div class="book-cover-wrap">
+          {{ cover(book, 'book-cover') }}
+          <div class="book-overlay">
+            <a href="{{ url_for('recommend') }}?q={{ book.title | urlencode }}" class="btn btn-sm btn-primary overlay-btn">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Similar Books
+            </a>
+          </div>
+        </div>
+        <div class="book-info">
+          <h3 class="book-title" title="{{ book.title }}">{{ book.title }}</h3>
+          <p class="book-author"><i class="fa-solid fa-pen-nib"></i> {{ book.author }}</p>
+          <div class="book-meta">
+            {% if book.avg_rating is not none %}
+            <span class="tag tag-ratings"><i class="fa-solid fa-star"></i> {{ book.avg_rating }}</span>
+            {% endif %}
+            {% if book.num_ratings %}
+            <span class="tag tag-count"><i class="fa-solid fa-users"></i> {{ "{:,}".format(book.num_ratings) }}</span>
+            {% endif %}
+          </div>
+          {{ buy_links(book) }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if popular_books | length > 20 %}
+    <div class="show-more-wrap">
+      <button class="btn btn-ghost" id="showMoreBtn" type="button">
+        <i class="fa-solid fa-chevron-down"></i> Show More
+      </button>
+    </div>
+    {% endif %}
+    {% else %}
+    <p class="section-sub" style="text-align:center">No books to show yet.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="cta-banner">
+  <div class="container cta-inner">
+    <div>
+      <h2>Ready to find your next great read?</h2>
+      <p>Type any book title and we'll find 5 books you're likely to love.</p>
+    </div>
+    <a href="{{ url_for('recommend') }}" class="btn btn-primary btn-lg">
+      <i class="fa-solid fa-wand-magic-sparkles"></i> Try It Now
+    </a>
+  </div>
+</section>
+{% endblock %}
