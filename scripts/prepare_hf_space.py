@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
 import time
@@ -208,6 +209,32 @@ def gradio_requirements(
     return "\n".join(lines) + "\n", warnings
 
 
+SHORT_DESCRIPTION_LIMIT = 60  # Hugging Face rejects longer Space descriptions
+
+
+def check_space_card(text: str) -> None:
+    """Catch Space README metadata that Hugging Face would reject, before uploading."""
+    if not text.startswith("---"):
+        raise PrepareError("Space README.md must start with a '---' metadata block.")
+    meta = text.split("---", 2)[1]
+    match = re.search(r"^short_description:\s*(.+)$", meta, flags=re.MULTILINE)
+    if match and len(match.group(1).strip()) > SHORT_DESCRIPTION_LIMIT:
+        raise PrepareError(
+            f"short_description in the Space README is {len(match.group(1).strip())} characters; "
+            f"Hugging Face allows at most {SHORT_DESCRIPTION_LIMIT}."
+        )
+    if "{" in meta:
+        raise PrepareError("Space README.md metadata still contains a {placeholder}.")
+    try:
+        import yaml
+    except ImportError:  # pragma: no cover - PyYAML is installed with pre-commit / gradio
+        return
+    try:
+        yaml.safe_load(meta)
+    except yaml.YAMLError as exc:
+        raise PrepareError(f"Space README.md metadata is not valid YAML: {exc}") from exc
+
+
 def _copy_artifacts(artifacts: Path, dest: Path, files: list[str]) -> None:
     dest.mkdir(parents=True, exist_ok=True)
     for name in files:
@@ -231,6 +258,7 @@ def _prepare_gradio(root: Path, out: Path, artifact_files: list[str]) -> list[st
     card = card.replace("{sdk_version}", GRADIO_SDK_VERSION).replace(
         "{python_version}", SPACE_PYTHON
     )
+    check_space_card(card)
     (out / "README.md").write_text(card, encoding="utf-8")
     text, warnings = gradio_requirements(
         lookup=_installed,
@@ -261,6 +289,7 @@ def write_github_workflow(root: Path, out: Path, space: str) -> Path:
 def _prepare_docker(root: Path, out: Path, artifact_files: list[str]) -> list[str]:
     for name in PROJECT_FILES:
         shutil.copy2(root / name, out / name)
+    check_space_card((root / "deploy" / "huggingface" / "README.md").read_text(encoding="utf-8"))
     for name in SPACE_FILES:
         shutil.copy2(root / "deploy" / "huggingface" / name, out / name)
     shutil.copytree(
@@ -298,6 +327,19 @@ def _is_client_error(exc: BaseException) -> bool:
     return isinstance(status, int) and 400 <= status < 500 and status not in (408, 429)
 
 
+_NETWORK_NAMES = ("Connect", "Timeout", "Network", "RemoteProtocol", "ReadError", "Reset")
+
+
+def _is_network_error(exc: BaseException) -> bool:
+    """Dropped connections, timeouts and temporary server errors: worth retrying."""
+    if isinstance(exc, (ConnectionError, TimeoutError, OSError)):
+        return True
+    status = getattr(getattr(exc, "response", None), "status_code", None)
+    if isinstance(status, int):
+        return status in (408, 429) or status >= 500
+    return any(part in type(exc).__name__ for part in _NETWORK_NAMES)
+
+
 def _retry(
     action: Callable[[], object],
     what: str,
@@ -318,7 +360,8 @@ def _retry(
                     '  python -c "import getpass; from huggingface_hub import login; '
                     "login(token=getpass.getpass('Token: '))\""
                 ) from exc
-            if _is_client_error(exc):  # e.g. 400 bad name: retrying will not help
+            if _is_client_error(exc) or not _is_network_error(exc):
+                # e.g. 400 bad name or invalid README metadata: retrying will not help
                 raise PrepareError(f"Hugging Face could not {what}: {exc}") from exc
             if attempt == attempts:
                 raise PrepareError(

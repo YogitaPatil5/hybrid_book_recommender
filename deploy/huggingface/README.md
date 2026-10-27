@@ -6,7 +6,7 @@ colorTo: blue
 sdk: docker
 app_port: 7860
 pinned: false
-short_description: Hybrid book recommender — semantic search + collaborative filtering
+short_description: Hybrid book recommender - semantic search and k-NN
 ---
 
 # BookMind Pro — Hybrid Book Recommender

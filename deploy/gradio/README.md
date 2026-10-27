@@ -8,7 +8,7 @@ sdk_version: {sdk_version}
 python_version: "{python_version}"
 app_file: app.py
 pinned: false
-short_description: Hybrid book recommender — semantic search + collaborative filtering
+short_description: Hybrid book recommender - semantic search and k-NN
 ---
 
 # BookMind Pro — Hybrid Book Recommender

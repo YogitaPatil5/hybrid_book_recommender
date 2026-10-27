@@ -655,3 +655,71 @@ class TestDeployWorkflow:
         ignore = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
         assert "artifacts/*" not in ignore
         assert "hf_space/" in ignore and ".venv/" in ignore
+
+
+class TestSpaceCard:
+    @pytest.mark.parametrize("folder", ["gradio", "huggingface"])
+    def test_shipped_cards_are_valid(self, folder: str) -> None:
+        card = (ROOT / "deploy" / folder / "README.md").read_text(encoding="utf-8")
+        card = card.replace("{sdk_version}", "6.30.0").replace("{python_version}", "3.12")
+        hf.check_space_card(card)  # raises if Hugging Face would reject it
+
+    def test_short_description_limit(self) -> None:
+        card = "---\ntitle: x\nshort_description: " + "a" * 61 + "\n---\n"
+        with pytest.raises(hf.PrepareError, match="61 characters"):
+            hf.check_space_card(card)
+        hf.check_space_card(card.replace("a" * 61, "a" * 60))
+
+    def test_invalid_yaml_rejected(self) -> None:
+        pytest.importorskip("yaml")
+        with pytest.raises(hf.PrepareError, match="not valid YAML"):
+            hf.check_space_card("---\nshort_description: one: two\n---\n")
+
+    def test_missing_front_matter_and_placeholders(self) -> None:
+        with pytest.raises(hf.PrepareError, match="metadata block"):
+            hf.check_space_card("# no metadata")
+        with pytest.raises(hf.PrepareError, match="placeholder"):
+            hf.check_space_card("---\nsdk_version: {sdk_version}\n---\n")
+
+    def test_prepare_refuses_bad_card(self, tmp_path: Path) -> None:
+        root = _fake_project(tmp_path)
+        card = root / "deploy" / "gradio" / "README.md"
+        card.write_text(card.read_text().replace("k-NN", "k-NN" + "x" * 40))
+        with pytest.raises(hf.PrepareError, match="short_description"):
+            hf.prepare(root, tmp_path / "space")
+
+
+class TestRetryClassification:
+    def test_value_error_is_not_retried_or_called_network(self) -> None:
+        calls: list[int] = []
+
+        def action() -> object:
+            calls.append(1)
+            raise ValueError('Invalid metadata in README.md. - "short_description" too long')
+
+        with pytest.raises(hf.PrepareError) as info:
+            hf._retry(action, "upload the files", sleep=lambda _s: None)
+        assert len(calls) == 1
+        assert "short_description" in str(info.value) and "network" not in str(info.value)
+
+    @pytest.mark.parametrize(
+        "exc",
+        [ConnectionResetError("reset"), TimeoutError("slow"), OSError("10054")],
+    )
+    def test_network_errors_are_retried(self, exc: Exception) -> None:
+        calls: list[int] = []
+
+        def action() -> object:
+            calls.append(1)
+            if len(calls) < 3:
+                raise exc
+            return "ok"
+
+        assert hf._retry(action, "x", sleep=lambda _s: None) == "ok" and len(calls) == 3
+
+    def test_httpx_style_connect_error_name_is_network(self) -> None:
+        class ConnectError(Exception):
+            pass
+
+        assert hf._is_network_error(ConnectError("boom"))
+        assert not hf._is_network_error(ValueError("bad"))

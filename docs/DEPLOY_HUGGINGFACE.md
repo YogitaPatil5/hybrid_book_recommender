@@ -42,7 +42,7 @@ dir artifacts
 python -m pytest
 ```
 ✅ `artifacts` has `book_index.faiss`, `book_meta.parquet`, `manifest.json`, four `.pkl` files and
-`knn_manifest.json`, and the tests show `506 passed`.
+`knn_manifest.json`, and the tests show `517 passed`.
 No artifacts yet? `python -m bookmind.pipeline.cli download` then
 `python -m bookmind.pipeline.cli all --classifier keyword`.
 
