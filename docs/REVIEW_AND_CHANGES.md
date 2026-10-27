@@ -21,7 +21,7 @@
 | 15 | Low | `app.py` | `JSON_SORT_KEYS` is deprecated in Flask 3 | n/a (moved to FastAPI) |
 | 16 | Low | `prepare_data.py` | No cleaning: HTML in descriptions, invalid ratings/years, duplicates, `javascript:` thumbnails | Full cleaning & validation step with a report |
 | 17 | Low | `classify_genres.py` | Ollama errors silently become `"Other"`; no server/model check | Fail-fast availability check, retries with exponential backoff, keyword fallback, failure count |
-| 18 | Low | — | No tests, no logging structure, no health checks, no rate limiting | 504 tests, structured logging, probes, metrics, rate limiting |
+| 18 | Low | — | No tests, no logging structure, no health checks, no rate limiting | 506 tests, structured logging, probes, metrics, rate limiting |
 
 ## Why FastAPI instead of Flask
 

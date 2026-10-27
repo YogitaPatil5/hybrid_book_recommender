@@ -44,8 +44,10 @@ FAKE_VERSIONS = {
 
 @pytest.fixture(autouse=True)
 def _fake_installed(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Deterministic 'locally installed' versions for the requirements pins."""
+    """Deterministic 'locally installed' versions, and the same results on a PC and in CI:
+    GitHub Actions sets GITHUB_ACTIONS=true, which adds a CI-only warning to prepare()."""
     monkeypatch.setattr(hf, "_installed", FAKE_VERSIONS.get)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
 
 
 def _fake_project(tmp: Path, *, backend: str = "sentence-transformers", knn: bool = True) -> Path:
@@ -584,6 +586,29 @@ class TestTrainedVersions:
         _, warnings = hf.gradio_requirements(lookup=FAKE_VERSIONS.get, trained=trained, on_ci=True)
         assert {w.split()[0] for w in warnings} == {"numpy", "pandas", "scipy"}
         assert all("train-knn" in w for w in warnings)
+
+    def test_prepare_warns_on_github_actions_without_recorded_versions(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+        warnings = hf.prepare(_fake_project(tmp_path), tmp_path / "space")
+        assert sorted(w.split()[0] for w in warnings) == [
+            "numpy",
+            "pandas",
+            "scikit-learn",
+            "scipy",
+        ]
+
+    def test_prepare_on_github_actions_is_quiet_with_recorded_versions(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+        root = _fake_project(tmp_path)
+        recorded = {"numpy": "2.1.0", "pandas": "2.2.3", "scikit-learn": "1.6.1", "scipy": "1.15.0"}
+        (root / "artifacts" / "knn_manifest.json").write_text(
+            json.dumps({"library_versions": recorded})
+        )
+        assert hf.prepare(root, tmp_path / "space") == []
 
     def test_prepare_uses_manifest_versions(self, tmp_path: Path) -> None:
         root = _fake_project(tmp_path)
