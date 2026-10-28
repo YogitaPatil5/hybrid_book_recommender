@@ -348,6 +348,10 @@ app = gr.mount_gradio_app(
     path="/demo",
     theme=gr.themes.Soft(primary_hue="indigo", neutral_hue="slate"),
     css=CSS,
+    # Hugging Face turns on Gradio's server-side rendering (GRADIO_SSR_MODE), which starts a
+    # separate Node.js server that grabs port 7860 - the port this website must listen on.
+    # The website renders its own HTML, so Gradio's SSR is not needed: keep it off.
+    ssr_mode=False,
 )
 
 if __name__ == "__main__":

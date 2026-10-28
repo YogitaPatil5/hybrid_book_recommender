@@ -129,6 +129,7 @@ Changed code or rebuilt the index → run Step 3 again → upload the changed fi
 | Space shows **Build error** | **Logs → Build**: copy the last ~30 lines and ask for help |
 | Space shows **Runtime error** | **Logs → Container**: copy the last ~30 lines and ask for help |
 | *No @spaces.GPU function detected during startup* | Fixed in `app.py` (it sends the startup report) — make sure the Space has the latest `app.py` |
+| `[Errno 98] … ('0.0.0.0', 7860): address already in use` | Gradio's server-side rendering started a Node.js server on 7860. Fixed in `app.py` (`ssr_mode=False`) — make sure the Space has the latest `app.py` |
 | "Search index not loaded" on the page | The `artifacts` folder didn't upload completely — upload it again |
 | Red **error** next to `.py` / `.json` files while uploading | Your network is cutting requests to huggingface.co — use **Route B (via GitHub)** or a phone hotspot |
 | Space is sleeping | Open the link and wait ~1 min, or click **Restart this Space** |
