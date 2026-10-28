@@ -63,3 +63,32 @@ slate + indigo palette with light **and** dark themes (see *Later improvements* 
 | Logs | Noisy third-party HTTP logs and a `FutureWarning` from sentence-transformers | Noisy loggers silenced; both old and new embedding-dimension APIs supported | Clean, readable console |
 | k-NN | Separate script from the original project | Integrated `train-knn` / `evaluate-knn` with three encodings, manifest + checksums, hybrid fallback | One reproducible pipeline, measured choice of encoding |
 | Windows | `pytest.exe` / `bookmind-pipeline.exe` blocked by Device Guard | All docs use `python -m pytest` and `python -m bookmind.pipeline.cli` | Works on locked-down college PCs |
+
+---
+
+## Deployment & CI/CD phase — problems found and fixed
+
+Each of these was found by a failing check or a live error and fixed with a regression test where
+possible — a record of how the release process caught problems before (or right after) users saw them.
+
+| # | Symptom | Root cause | Fix |
+|---|---|---|---|
+| 1 | Hugging Face shows Docker as **Paid**; CPU Basic greyed out | Free accounts can only create Gradio + ZeroGPU Spaces (platform change) | `deploy/gradio/app.py` — a Gradio Space that serves the full FastAPI website |
+| 2 | Uploads to huggingface.co reset (`WinError 10054`) from the local network | Network cuts connections to huggingface.co | Deployment moved to GitHub Actions: GitHub's servers upload; the upload script retries only real network errors |
+| 3 | Dragging folders into the browser uploader was unreliable | Nested folders (`bookmind/`, `artifacts/`) in the upload | Space package is flat: 12 files, code in `bookmind.zip` |
+| 4 | CI failed on GitHub but passed locally | GitHub sets `GITHUB_ACTIONS=true`, which changed warnings in the packaging code under test | Tests clear the variable; two tests cover the CI-specific behaviour |
+| 5 | Deploy failed: *short_description must be ≤ 60 characters* | Space description was 67 characters | Shorter description; `check_space_card` validates length and YAML before every upload |
+| 6 | Upload errors reported as "network problem" | Retry logic treated every error as a network error | Only connection/timeout/5xx/429 errors are retried; others are reported as-is |
+| 7 | Live UI differed from the local one | First Space version was a Gradio-only screen | Space serves the FastAPI website; Gradio moved to `/demo`; `frame_ancestors` and `mounted_app_paths` settings added (off by default) |
+| 8 | *No @spaces.GPU function detected during startup* | ZeroGPU's startup report is sent inside Gradio's `launch()`, which the website doesn't use | `app.py` calls `spaces.zero.startup()` before starting uvicorn |
+| 9 | (Prevented) searches would fail on ZeroGPU | The hardware reports a GPU that only works inside GPU functions; the model would load on it | Explicit `embedding_device` setting, default `cpu` |
+| 10 | `[Errno 98] address already in use` on port 7860 | Hugging Face enables Gradio SSR, which starts a Node.js server on 7860 | `mount_gradio_app(..., ssr_mode=False)` |
+| 11 | (Prevented) pickled k-NN model might not load on the Space | Pickles depend on the pandas/scikit-learn versions that wrote them | `train-knn` records library versions in `knn_manifest.json`; the Space pins exactly those |
+
+## Final documentation & accuracy review
+
+| Finding | Fix |
+|---|---|
+| Home and Search pages claimed "search by **author**", but book vectors are built from title, genre and description only | Wording corrected on both pages, in the API field description and in the README |
+| About page said genres come from the LLM, but the live index was built with the keyword classifier | Now states both methods; the stat label "Ratings analysed" renamed "Ratings in model" (it counts the 52,615 interactions in the model, not the 1.15M raw ratings) |
+| Light-mode muted text measured 4.3–4.4:1 contrast (WCAG-AA needs 4.5:1) | Darkened to `#5f6e84` (≥ 4.7:1); all text colours now meet AA in both themes |

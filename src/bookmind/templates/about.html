@@ -24,7 +24,7 @@
       <div class="stat-card">
         <i class="fa-solid fa-star" style="color:var(--accent-orange)"></i>
         <span class="stat-big">{{ "{:,}".format(stats.total_ratings) }}</span>
-        <span class="stat-label">Ratings analysed</span>
+        <span class="stat-label">Ratings in model</span>
       </div>
       <div class="stat-card">
         <i class="fa-solid fa-users" style="color:var(--accent-green)"></i>
@@ -50,7 +50,7 @@
       <h2><i class="fa-solid fa-gears"></i> Semantic Search Engine</h2>
       <ol class="about-list">
         <li><strong>Data preparation</strong> — the raw catalogue is validated, cleaned and de-duplicated.</li>
-        <li><strong>Genre tagging</strong> — a local LLM (via Ollama) assigns one genre from a fixed taxonomy; a keyword classifier is the offline fallback.</li>
+        <li><strong>Genre tagging</strong> — each book gets one genre from a fixed genre list, assigned offline by a local LLM (Ollama) or, without one, by a keyword classifier.</li>
         <li><strong>Embeddings</strong> — each book's title, genre and description are encoded by <code>{{ stats.embedding_model or "all-MiniLM-L6-v2" }}</code> into a normalised vector.</li>
         <li><strong>FAISS index</strong> — inner-product search over normalised vectors equals cosine similarity; genre filters run inside the index.</li>
         <li><strong>Query time</strong> — your query is embedded the same way and the closest books are returned, de-duplicated across editions.</li>
@@ -65,7 +65,15 @@
         <li><strong>Implicit feedback</strong> — a rating of 0 means "interacted, no score"; it is never confused with "never read" (mode: <code>{{ stats.knn_mode or "binary" }}</code>).</li>
         <li><strong>Filtering</strong> — engaged readers and books read by enough of them; editions merged by title + author.</li>
         <li><strong>Model</strong> — item–item k-NN (cosine) over a sparse book × reader matrix covering <strong>{{ "{:,}".format(stats.knn_books) }} books</strong>.</li>
-        <li><strong>Evaluation</strong> — Hit-Rate@5 on held-out readers, compared with a popularity baseline (<code>bookmind-pipeline evaluate-knn</code>).</li>
+        <li><strong>Evaluation</strong> — Hit-Rate@5 on held-out readers, compared with a popularity baseline (<code>python -m bookmind.pipeline.cli evaluate-knn</code>).</li>
+      </ol>
+    </div>
+
+    <div class="about-block">
+      <h2><i class="fa-solid fa-code-merge"></i> How Recommendations Are Chosen</h2>
+      <ol class="about-list">
+        <li><strong>Book in the ratings model</strong> — collaborative filtering: books read by the same readers ("Readers who rated this book also loved these").</li>
+        <li><strong>Any other book</strong> — semantic similarity: books whose title, genre and description are closest in meaning ("Books with the most similar themes and content").</li>
       </ol>
     </div>
     {% endif %}

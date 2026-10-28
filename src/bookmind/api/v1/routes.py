@@ -55,7 +55,7 @@ def search_books(
         str,
         Query(
             max_length=5000,
-            description="Title, author or free-text description. Optional when a genre is "
+            description="Title or free-text description. Optional when a genre is "
             "given: an empty query returns the most-read books in that genre.",
             examples=["a slow-burn mystery set in winter"],
         ),

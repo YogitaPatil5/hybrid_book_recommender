@@ -255,7 +255,7 @@ def about_markdown() -> str:
     s = catalogue_stats(registry)
     knn = (
         f"**{s.knn_books:,} books × {s.total_users:,} readers** "
-        f"({s.total_ratings:,} ratings, `{s.knn_mode}` encoding)"
+        f"({s.total_ratings:,} ratings in the model, `{s.knn_mode}` encoding)"
         if s.knn_available
         else "not loaded (semantic similarity is used instead)"
     )
@@ -268,9 +268,9 @@ def about_markdown() -> str:
 
 **Hybrid:** *Recommend* uses collaborative filtering when the title is in the ratings data, otherwise semantic similarity.
 
-Built with Python · Sentence-Transformers · FAISS · scikit-learn · pandas · Gradio.
-The full project also has a FastAPI website and REST API, 500+ automated tests, Docker and CI.
-No paid APIs — everything is free and open source. Version {__version__}.
+This is the Gradio view of BookMind; the main website (FastAPI) is at [the home page](/), with the
+REST API documented at [/docs](/docs). Built with Python · FastAPI · Sentence-Transformers · FAISS ·
+scikit-learn · pandas · Gradio; 500+ automated tests and CI/CD. No paid APIs. Version {__version__}.
 """
 
 

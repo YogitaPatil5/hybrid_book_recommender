@@ -177,6 +177,52 @@ flowchart TD
 | `ml/embedder.py` | `SentenceTransformerEncoder`, `HashingEncoder`, `CachedEncoder`, `l2_normalize` | Text → vectors |
 | `pipeline/*.py` | `download_datasets`, `prepare_dataframe`, `run_classify`, `build_index`, `train_knn`, `evaluate_knn` | Offline pipeline |
 | `static/js/*.js` | `theme.js`, `main.js`, `autocomplete.js` | Theme, navigation, type-ahead |
+| `deploy/gradio/app.py` | `extract_package`, `report_zerogpu_startup`, `build_demo`, `search`, `recommend` | Hugging Face Space entry point: full website + Gradio at `/demo` |
+| `scripts/prepare_hf_space.py` | `prepare`, `check_artifacts`, `gradio_requirements`, `trained_versions`, `check_space_card`, `upload`, `_retry` | Builds and uploads the Space package |
+| `.github/workflows/ci.yml` | jobs: lint, test (matrix), audit, docker | Continuous integration |
+| `.github/workflows/deploy.yml` | job: hugging-face | Continuous deployment after green CI |
+
+## 10. CI/CD pipeline
+
+```mermaid
+flowchart LR
+    P["git push / pull request"] --> L["Lint & type-check<br/>ruff · ruff format · mypy --strict"]
+    P --> T["Tests ×4<br/>Python 3.10 · 3.11 · 3.12 · 3.13<br/>pytest + coverage ≥ 85%"]
+    P --> AU["Dependency audit<br/>pip-audit (report only)"]
+    L --> D["Docker build"]
+    T --> D
+    D --> OK{"CI green<br/>on main?"}
+    OK -->|yes| DEP["Deploy workflow<br/>prepare_hf_space.py --upload"]
+    OK -->|no| X["stop — nothing deployed"]
+    DEP --> HF["Hugging Face Space rebuilds"]
+```
+
+The Deploy workflow is triggered by `workflow_run` (CI completed, conclusion `success`, branch
+`main`) and checks out exactly the commit that passed. Secrets: `HF_TOKEN` (encrypted); variable:
+`HF_SPACE`.
+
+## 11. Live deployment (Hugging Face Space runtime)
+
+```mermaid
+flowchart TD
+    START["python app.py (Gradio SDK runs this)"] --> UNZIP["extract bookmind.zip → temp dir<br/>(zip-slip checked)"]
+    UNZIP --> ENV["production defaults<br/>ENV=production · ENABLE_DOCS · FRAME_ANCESTORS · MOUNTED_APP_PATHS"]
+    ENV --> REG["ServiceRegistry.load<br/>FAISS index + k-NN model (CPU)"]
+    REG --> WEB["create_app(settings, registry)<br/>FastAPI website + REST API"]
+    REG --> GR["build_demo()<br/>Gradio screens"]
+    GR --> MOUNT["mount_gradio_app(path='/demo', ssr_mode=False)"]
+    WEB --> MOUNT
+    MOUNT --> ZG["spaces.zero.startup()<br/>report the @spaces.GPU placeholder"]
+    ZG --> UV["uvicorn :7860<br/>proxy_headers · forwarded_allow_ips='*'"]
+    UV --> PROXY["Hugging Face HTTPS proxy"]
+    PROXY --> USER["https://yogita4-bookmind.hf.space"]
+```
+
+| Environment | How it runs | Differences |
+|---|---|---|
+| Laptop (`run.bat`) | `python -m bookmind` → uvicorn | development mode, free-port fallback, `/docs` on, framing denied |
+| Docker / server | gunicorn + uvicorn workers (`gunicorn.conf.py`) | production mode, JSON logs, Redis for shared rate limits |
+| Hugging Face Space | `app.py` → uvicorn on 7860 | production mode with `/docs` on, framing allowed for huggingface.co, Gradio at `/demo` |
 
 A function-by-function walkthrough with the reasoning behind each design choice is in
 [`EXPLAINER.html`](EXPLAINER.html).

@@ -1,239 +1,141 @@
-# Put BookMind online — free, 24/7, no laptop needed
+# Deployment — BookMind live on Hugging Face Spaces
 
-**Hugging Face Spaces** hosts the app for free, like Streamlit Community Cloud does for Streamlit apps.
-You get a permanent link such as `https://yourname-bookmind.hf.space` that keeps working when your
-laptop is off.
+**Live app:** https://yogita4-bookmind.hf.space · **Space page:** https://huggingface.co/spaces/Yogita4/bookmind
+**Source & pipelines:** https://github.com/YogitaPatil5/hybrid_book_recommender
 
-> **Important (2026):** on free Hugging Face accounts, **Docker Spaces are now paid** and new free
-> accounts can only pick **Gradio + ZeroGPU** hardware. A Gradio Space simply runs `python app.py`
-> and shows whatever answers on port 7860 — so `deploy/gradio/app.py` serves your **complete FastAPI
-> website** (same pages, light/dark theme, dropdowns, REST API, `/docs`) and mounts a small Gradio
-> screen at **`/demo`**, which the free ZeroGPU hardware expects.
+The app is hosted free on **Hugging Face Spaces** and deployed automatically by **GitHub Actions**
+whenever tests pass on `main`. Visitors see the same BookMind website as `run.bat` locally (pages,
+light/dark theme, dropdowns, REST API, `/docs`); a Gradio version of the screens is at `/demo`.
 
-| | Free Gradio Space |
+| | Free Hugging Face Space |
 |---|---|
 | Cost | Free, no credit card |
-| What visitors see | **Your BookMind website** — identical to `run.bat` locally (Gradio version at `/demo`) |
-| Engines | Same as the full app: MiniLM + FAISS semantic search, k-NN collaborative filtering, hybrid fallback |
-| Always on? | Sleeps after ~48 h without visitors; the next visit wakes it (1–2 min) |
-| Link | `https://<username>-bookmind.hf.space` |
-
-```mermaid
-flowchart LR
-    PC["Your PC<br/>code + artifacts/"] -->|"1. prepare_hf_space.py"| F["hf_space/ folder<br/>app.py · bookmind/ · artifacts/"]
-    F -->|"2. drag & drop in the browser"| HF["Hugging Face Space<br/>(Gradio, free)"]
-    HF --> APP["https://user-bookmind.hf.space"]
-    U["Mentor / friends"] --> APP
-```
-
-**Two routes — pick one:**
-
-| Route | Your PC uploads to | Use it when |
-|---|---|---|
-| **A — Browser** (Steps 1–8) | huggingface.co | Your network reaches huggingface.co reliably |
-| **B — Via GitHub** ([jump](#route-b--via-github-when-your-network-blocks-huggingfaceco)) | github.com only; GitHub's servers upload to Hugging Face | Uploads to huggingface.co fail (`WinError 10054`, red **error** on `.py`/`.json` files) |
+| Hardware | ZeroGPU (`zero-a10g`) — the only free option for new accounts; BookMind itself runs on CPU |
+| Always on? | Sleeps after ~48 h without visitors; the next visit wakes it (~1–2 min) |
+| Deploys | Automatically after green CI (or by hand — see the end of this guide) |
 
 ---
 
-## Step 1 — Check the project is ready
-
-```cmd
-.venv\Scripts\activate
-dir artifacts
-python -m pytest
-```
-✅ `artifacts` has `book_index.faiss`, `book_meta.parquet`, `manifest.json`, four `.pkl` files and
-`knn_manifest.json`, and the tests show `529 passed`.
-No artifacts yet? `python -m bookmind.pipeline.cli download` then
-`python -m bookmind.pipeline.cli all --classifier keyword`.
-
-## Step 2 — (Optional) try the Gradio page on your PC first
-
-```cmd
-python -m pip install gradio==6.30.0
-python deploy\gradio\app.py
-```
-Open **http://127.0.0.1:7860** (your website) and **http://127.0.0.1:7860/demo** (Gradio) — exactly
-what the Space will show. Ctrl+C to stop.
-
-## Step 3 — Build the upload folder
-
-```cmd
-python scripts\prepare_hf_space.py
-```
-✅ Ends with `Ready (gradio Space): …\hf_space`. That folder has **12 files and no sub-folders**
-(the browser uploader accepts them in one drop):
-
-| Item | What it is |
-|---|---|
-| `app.py` | Starts your FastAPI website (+ Gradio at `/demo`) on port 7860 |
-| `README.md` | Space settings (Gradio 6.30.0, Python 3.12) + description |
-| `requirements.txt` | Libraries pinned to the **same versions as your PC** — the k-NN files only load with the pandas/scikit-learn they were trained with |
-| `bookmind.zip` | Your whole `bookmind` package — code, HTML templates, CSS/JS; `app.py` unpacks it at startup |
-| 8 artifact files | `manifest.json`, `book_index.faiss`, `book_meta.parquet`, `knn_manifest.json` and four `.pkl` files (~26 MB) |
-
-Your `.env`, `.venv`, `data`, logs and tests are never included.
-
-## Step 4 — Create the Space (browser)
-
-1. Make sure your **email is verified** on Hugging Face.
-2. Open **https://huggingface.co/new-space** and fill in:
-   - **Space name:** `bookmind`
-   - **License:** MIT (or leave empty)
-   - **Select the Space SDK:** **Gradio** → template **Blank**
-   - **Space hardware:** **ZeroGPU (Free)** — the default for free accounts
-   - **Visibility:** **Public**
-3. Click **Create Space**.
-
-## Step 5 — Upload the files (browser)
-
-1. On the new Space: **Files** tab → **+ Contribute** → **Upload files**.
-2. In File Explorer open the `hf_space` folder, press **Ctrl+A** and **drag all 12 files** into the
-   upload box.
-3. Wait until all files are listed, then click **Commit changes to main**.
-   If asked about `README.md`, keep **ours** (it contains the Space settings).
-
-## Step 6 — Wait for the build (~5–10 minutes)
-
-The badge goes **Building → Running** (click **Logs** to watch: installing libraries, then
-downloading the embedding model on first start). When it's **Running** the app appears on the page.
-
-## Step 7 — Share
-
-| Link | Use |
-|---|---|
-| `https://yogita4-bookmind.hf.space` | **Share this** — the app full-screen (replace `yogita4` with your username, lower-case) |
-| `https://huggingface.co/spaces/Yogita4/bookmind` | Space page (app + files + logs) |
-
-Message you can send:
-> Hi! I built BookMind, a hybrid book recommender (semantic search + collaborative filtering).
-> Try it: https://yogita4-bookmind.hf.space — describe a book you'd like, pick a genre, or get
-> recommendations for a book you loved. (If it's asleep, give it a minute to wake up.)
-
-## Step 8 — Update later
-
-Changed code or rebuilt the index → run Step 3 again → upload the changed files the same way
-(Step 5). The Space rebuilds; the link stays the same.
-
----
-
-## Troubleshooting
-
-| Problem | Fix |
-|---|---|
-| Docker shows **Paid** / CPU Basic is greyed out | Expected on free accounts — use **Gradio + ZeroGPU** as above |
-| `artifacts/ is missing …` | Build locally: `python -m bookmind.pipeline.cli all --classifier keyword` |
-| `The index was built with the 'hashing' encoder` | `python -m bookmind.pipeline.cli build-index --backend sentence-transformers` |
-| `WARNING: k-NN files not found` | Optional. For "readers also liked": `python -m bookmind.pipeline.cli train-knn` |
-| `WARNING: … does not support Python 3.12` | Fine in most cases; if the Space then shows a k-NN error, tell us the warning |
-| Space shows **Build error** | **Logs → Build**: copy the last ~30 lines and ask for help |
-| Space shows **Runtime error** | **Logs → Container**: copy the last ~30 lines and ask for help |
-| *No @spaces.GPU function detected during startup* | Fixed in `app.py` (it sends the startup report) — make sure the Space has the latest `app.py` |
-| `[Errno 98] … ('0.0.0.0', 7860): address already in use` | Gradio's server-side rendering started a Node.js server on 7860. Fixed in `app.py` (`ssr_mode=False`) — make sure the Space has the latest `app.py` |
-| "Search index not loaded" on the page | The `artifacts` folder didn't upload completely — upload it again |
-| Red **error** next to `.py` / `.json` files while uploading | Your network is cutting requests to huggingface.co — use **Route B (via GitHub)** or a phone hotspot |
-| Space is sleeping | Open the link and wait ~1 min, or click **Restart this Space** |
-
-## Route B — via GitHub (when your network blocks huggingface.co)
-
-Put the **complete project** on GitHub. Two workflows then run on GitHub's servers:
-
-| Workflow | When | What it does |
-|---|---|---|
-| `.github/workflows/ci.yml` (**CI**) | every push / pull request | lint (ruff), type check (mypy), all tests, dependency audit, Docker build |
-| `.github/workflows/deploy.yml` (**CD**) | after CI passes on `main` | builds the Space folder and uploads it to Hugging Face |
-
-Your PC only talks to github.com — and a broken commit never reaches your live link, because
-deployment waits for green tests.
+## 1. How it works
 
 ```mermaid
 flowchart LR
     PC["Your PC<br/>git push"] --> GH["GitHub repository"]
-    GH --> CI["CI: lint · mypy · tests · Docker"]
-    CI -->|"green on main"| CD["Deploy: prepare_hf_space.py --upload"]
-    CD --> HF["Hugging Face Space"]
+    GH --> CI["CI · ci.yml<br/>ruff · mypy · tests (py3.10–3.13)<br/>audit · Docker build"]
+    CI -->|"green on main"| CD["Deploy · deploy.yml<br/>prepare_hf_space.py --upload"]
+    CI -->|"any failure"| STOP["nothing deployed"]
+    CD --> HF["Hugging Face Space<br/>(Gradio SDK, ZeroGPU)"]
     HF --> APP["https://yogita4-bookmind.hf.space"]
 ```
 
-**B1 — (Recommended) record library versions in the k-NN model.** Re-train once (≈1 minute) so
-`artifacts/knn_manifest.json` stores the numpy/pandas/scipy/scikit-learn versions; the deploy pins
-exactly those, so the model files load the same way on the Space:
+| Workflow | Runs when | What it does |
+|---|---|---|
+| `.github/workflows/ci.yml` (**CI**) | every push / pull request | ruff lint + format check, strict mypy, all tests on Python 3.10–3.13 with coverage, dependency audit, Docker build |
+| `.github/workflows/deploy.yml` (**Deploy**) | after CI succeeds on `main` (or **Run workflow** by hand) | checks the `HF_TOKEN` secret, runs `scripts/prepare_hf_space.py --upload "$HF_SPACE"` |
+
+`prepare_hf_space.py` builds a flat folder (`hf_space/`, 12 files) and uploads it:
+
+| File | Contents |
+|---|---|
+| `app.py` | Space entry point (from `deploy/gradio/app.py`) — see section 3 |
+| `README.md` | Space settings: `sdk: gradio`, `sdk_version: 6.30.0`, `python_version: "3.12"`, title, description (checked locally: valid YAML, description ≤ 60 characters) |
+| `requirements.txt` | numpy, pandas, scipy, scikit-learn **pinned to the versions recorded when the k-NN model was trained** (`knn_manifest.json`), so the pickled model loads identically; other libraries pinned to the build machine or given safe ranges |
+| `bookmind.zip` | The whole `bookmind` package — code, HTML templates, CSS/JS |
+| 8 artifact files | `manifest.json`, `book_index.faiss`, `book_meta.parquet`, `knn_manifest.json`, four `.pkl` files (~26 MB) |
+
+Never included: `.env`, `.venv`, `data/`, logs, tests.
+
+---
+
+## 2. First-time setup (already done for this project)
+
+1. **Record library versions in the k-NN model** (so the deploy can pin them):
+   `python -m bookmind.pipeline.cli train-knn`
+2. **Hugging Face:** create an account, verify the email, create a **Write** token
+   (avatar → Settings → Access Tokens). Optionally create the Space by hand: **New Space** →
+   name `bookmind`, SDK **Gradio** (template Blank), hardware **ZeroGPU (Free)**, **Public**.
+   (Docker is marked *Paid* on free accounts; CPU Basic is unavailable to new free accounts.)
+3. **GitHub:** create an empty repository and push the project:
+   ```cmd
+   git init
+   git add .
+   git commit -m "BookMind Pro: hybrid book recommender"
+   git branch -M main
+   git remote add origin https://github.com/<github-username>/<repository>.git
+   git push -u origin main
+   ```
+   `git add .` follows `.gitignore`: code, docs, tests and `artifacts/` are pushed; `.venv`, `data`,
+   logs, `.env` and `hf_space` are not.
+4. **Connect GitHub to Hugging Face** — repository **Settings → Secrets and variables → Actions**:
+   - **Secrets** → `HF_TOKEN` = the Hugging Face Write token (stored encrypted, never shown in logs)
+   - **Variables** → `HF_SPACE` = `Yogita4/bookmind`
+5. **Actions** tab → wait for **CI** ✅ → **Deploy** ✅ → the Space goes **Building → Running**.
+
+## 3. What `app.py` does on the Space (and why)
+
+A Gradio Space simply runs `python app.py` and shows whatever answers on **port 7860**.
+
+| Step | Why |
+|---|---|
+| Unpacks `bookmind.zip` to a temporary folder (with zip-slip protection) | Templates and static files must be real files |
+| Sets production defaults: `BOOKMIND_ENV=production`, `ENABLE_DOCS=true`, `LOG_TO_FILE=false`, `FRAME_ANCESTORS=["https://huggingface.co"]`, `MOUNTED_APP_PATHS=["/demo"]` | HTTPS-only headers; `/docs` for reviewers; console logs; lets the Space page show the site in its frame; leaves Gradio's own scripts alone |
+| Loads the engines once (`ServiceRegistry.load`) and builds the FastAPI app with `create_app(settings, registry=registry)` | Same code as locally |
+| Mounts the Gradio screen at `/demo` with `ssr_mode=False` | Gradio's server-side rendering would start a Node.js server on port 7860 (`Errno 98 address already in use`) |
+| Declares one `@spaces.GPU` placeholder and calls `spaces.zero.startup()` before starting uvicorn | ZeroGPU requires a GPU function to be reported at startup; Gradio normally does this inside `launch()`, which this app doesn't use |
+| Runs uvicorn with `proxy_headers=True`, `forwarded_allow_ips="*"` | Hugging Face's proxy terminates HTTPS: links become `https://` and rate limits apply per visitor |
+| Model on CPU (`BOOKMIND_EMBEDDING_DEVICE=cpu`, the default) | ZeroGPU reports a GPU that only works inside GPU functions; MiniLM is fast on CPU anyway |
+
+## 4. Releasing a change
+
 ```cmd
-python -m bookmind.pipeline.cli train-knn
-```
-
-**B2 — Create an empty GitHub repository** at **https://github.com/new** (Public; *don't* add a
-README, .gitignore or licence — the project has them).
-
-**B3 — Push the project** (from the project folder, with Git installed — `git --version`):
-```cmd
-git init
-git add .
-git commit -m "BookMind Pro: hybrid book recommender"
-git branch -M main
-git remote add origin https://github.com/<github-username>/<repository>.git
-git push -u origin main
-```
-`git add .` respects `.gitignore`: code, docs, tests and `artifacts/` are uploaded; `.venv`, `data`,
-logs, `.env` and `hf_space` are not. The first push asks you to sign in to GitHub in the browser.
-
-**B4 — Connect GitHub to Hugging Face** (repository **Settings → Secrets and variables → Actions**)
-- **Secrets** tab → **New repository secret** → Name `HF_TOKEN`, Secret = a Hugging Face **Write**
-  token (huggingface.co → Settings → Access Tokens).
-- **Variables** tab → **New repository variable** → Name `HF_SPACE`, Value `Yogita4/bookmind`
-  (your `<hf-username>/<space-name>`).
-
-**B5 — Run it**
-Repository → **Actions**. The first CI run started with your push (≈5–10 min). The **Deploy**
-workflow starts when CI is green — or start it now: **Actions → Deploy → Run workflow**.
-✅ Green tick → open **https://huggingface.co/spaces/Yogita4/bookmind** → wait for **Running** →
-share **https://yogita4-bookmind.hf.space**.
-
-**From now on (CI/CD):**
-```cmd
+python -m pytest
 git add .
 git commit -m "describe your change"
 git push
 ```
-→ tests run → if green, the Space updates automatically.
+CI (~6 min) → Deploy (~1 min) → Space build (~5–10 min). The link stays the same.
 
-Red cross on **Deploy**? Click it and read the last lines: `HF_TOKEN secret not set` → B4;
-`401`/`403` → the token isn't **Write**; `could not create the Space: 402 …` → create the Space by
-hand as **Gradio + ZeroGPU** (Step 4) and re-run. Red cross on **CI**? Run
-`python -m pytest` locally, fix, push again.
+**Check the live status:** https://huggingface.co/api/spaces/Yogita4/bookmind/runtime shows
+`"stage": "RUNNING"` (or the error) — useful when the Space page is cached.
 
-> Minimal alternative: `python scripts\prepare_hf_space.py --github Yogita4/bookmind` adds a
-> workflow to `hf_space/` so that folder alone can be uploaded to its own small GitHub repository.
+---
 
-## Good to know
+## 5. Troubleshooting
 
-- **Public Space = public files.** Anyone can open the **Files** tab. That's fine here (public
-  datasets, no secrets). Never upload `.env` or tokens.
-- **ZeroGPU** gives the Space a GPU only on request; BookMind never asks for one (MiniLM + FAISS
-  answer in milliseconds on CPU). `app.py` contains one placeholder GPU function because ZeroGPU
-  Spaces must declare one at startup — it is never called. Because the website is served by
-  uvicorn (not Gradio's `launch()`), `app.py` also sends ZeroGPU's startup report itself; without it
-  the Space stops with *"No @spaces.GPU function detected during startup"*. The embedding model is
-  pinned to the CPU (`BOOKMIND_EMBEDDING_DEVICE=cpu`) because ZeroGPU reports a GPU that is only
-  usable inside GPU functions.
-- **Security on the Space:** production mode (HTTPS-only headers), `/docs` kept on, and two settings
-  that are *off* locally: `BOOKMIND_FRAME_ANCESTORS=["https://huggingface.co"]` lets the Space page
-  show the site in its frame (instead of `X-Frame-Options: DENY`), and
-  `BOOKMIND_MOUNTED_APP_PATHS=["/demo"]` leaves Gradio's own scripts alone. Links are `https://`
-  because `app.py` trusts the Space proxy's `X-Forwarded-Proto`.
-- To take it offline: Space **Settings → Pause** (or **Delete this Space** at the bottom).
+| Problem | Cause → fix |
+|---|---|
+| **CI** red | A test, lint or type check failed — open the failed step, fix locally (`python -m pytest`), push again |
+| **Deploy** skipped ⊘ | CI didn't pass — expected; fix CI first |
+| `HF_TOKEN secret not set` | Add the secret (section 2, step 4), then **Re-run jobs** |
+| `401` / `403` / "refused the request" | Token is Read-only or wrong, or the email isn't verified — new **Write** token, update the secret |
+| `short_description … ≤ 60 characters` | Shorten it in `deploy/gradio/README.md` (the script now checks this before uploading) |
+| Docker shows **Paid** / CPU Basic greyed out | Expected on free accounts — use Gradio + ZeroGPU |
+| *No @spaces.GPU function detected during startup* | Old `app.py` — the current one sends the startup report |
+| `[Errno 98] … ('0.0.0.0', 7860): address already in use` | Old `app.py` — the current one sets `ssr_mode=False` |
+| "Search index not loaded" on the page | `artifacts/` incomplete in the repository — rebuild locally, commit, push |
+| `WARNING: … version was not recorded at training time` | Run `python -m bookmind.pipeline.cli train-knn`, commit `artifacts/`, push |
+| Space is sleeping | Open the link and wait ~1 minute |
+| Uploads to huggingface.co fail from your PC (`WinError 10054`) | Some networks cut those connections — the GitHub route avoids it (GitHub's servers upload) |
 
-## Optional — upload from the terminal instead of the browser
+## 6. Good to know
 
-Only if your network keeps the connection to huggingface.co stable:
-```cmd
-python -c "import getpass; from huggingface_hub import login; login(token=getpass.getpass('Token: '))"
-python scripts\prepare_hf_space.py --upload <username>/bookmind
-```
-Use a **Write** token (Settings → Access Tokens). It is saved once per PC, outside the project.
+- **Public Space = public files.** Anyone can open the **Files** tab — fine here (public datasets,
+  no secrets). Never commit `.env` or tokens.
+- **Pause or remove:** Space **Settings → Pause** (or **Delete this Space**).
+- **Test the Space package locally:** `python -m pip install gradio==6.30.0`, then
+  `python deploy\gradio\app.py` → http://127.0.0.1:7860 (website) and `/demo` (Gradio).
 
-## Full FastAPI app on Hugging Face (paid)
+## 7. Manual alternatives
 
-With a paid Hugging Face plan, Docker Spaces run the complete FastAPI app (themed pages, `/docs`,
-REST API): `python scripts\prepare_hf_space.py --sdk docker`, then upload the folder to a **Docker**
-Space. The image is defined in `deploy/huggingface/Dockerfile`.
+**Upload by hand (browser):** `python scripts\prepare_hf_space.py` → on the Space: **Files →
+Contribute → Upload files** → drag all 12 files from `hf_space\` → **Commit changes to main**.
+
+**Upload from the terminal:** log in once with
+`python -c "import getpass; from huggingface_hub import login; login(token=getpass.getpass('Token: '))"`,
+then `python scripts\prepare_hf_space.py --upload <username>/bookmind`.
+
+**Docker Space (paid plan):** `python scripts\prepare_hf_space.py --sdk docker` and upload to a
+**Docker** Space (`deploy/huggingface/Dockerfile`: port 7860, user 1000, model and artifacts baked in).
+
+**Minimal Space-only repository:** `python scripts\prepare_hf_space.py --github <username>/bookmind`
+adds a workflow to `hf_space/` so that folder alone can live in its own small GitHub repository.

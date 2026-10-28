@@ -3,7 +3,7 @@ Semantic book search over a FAISS inner-product index.
 
 Capabilities
 ------------
-* ``search``        free text / title / author / "vibe" query, optional genre filter
+* ``search``        free text / title / "vibe" query, optional genre filter
 * ``similar``       "more like this" for a catalogue title (uses stored vectors)
 * ``autocomplete``  title suggestions (prefix matches first, then substring)
 * ``popular``       most-rated books, used by the home page when k-NN is absent
