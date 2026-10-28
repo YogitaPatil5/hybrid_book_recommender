@@ -6,7 +6,7 @@
 |---|---|---|---|
 | ☐ | Create & activate venv | `python -m venv .venv` → activate | prompt shows `(.venv)` |
 | ☐ | Install | `python -m pip install --index-url https://download.pytorch.org/whl/cpu torch`, `python -m pip install -r requirements-dev.txt`, `python -m pip install -e . --no-deps` | no errors |
-| ☐ | Tests | `python -m pytest` | **528 passed** |
+| ☐ | Tests | `python -m pytest` | **529 passed** |
 | ☐ | Datasets | `python -m bookmind.pipeline.cli download` | `data/books_raw.csv`, `data/bx/BX-*.csv` |
 | ☐ | Build | `python -m bookmind.pipeline.cli all --classifier keyword` (drop `--classifier keyword` to use Ollama) | `artifacts/` has `book_index.faiss`, `manifest.json`, 4 `.pkl`, `knn_manifest.json` |
 | ☐ | Evaluate | `python -m bookmind.pipeline.cli evaluate-knn --compare-modes` | `artifacts/knn_eval_*.json` — note your numbers |
@@ -68,7 +68,7 @@ Readers are split 80/20 *before* training; the model never sees test readers' in
 **Q: What makes it production-grade?**
 Validation at every boundary, typed errors with stable codes, structured logs with request IDs,
 health/readiness probes, Prometheus metrics, rate limiting, security headers, checksummed artifacts,
-degraded mode instead of crashing, 528 tests at ~99% coverage, strict typing, Docker and CI.
+degraded mode instead of crashing, 529 tests at ~99% coverage, strict typing, Docker and CI.
 
 **Q: How would it scale?**
 FAISS supports approximate indexes (IVF/HNSW) for millions of vectors; workers are stateless so they

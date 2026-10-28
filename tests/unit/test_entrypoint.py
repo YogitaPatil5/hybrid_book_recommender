@@ -101,8 +101,10 @@ class TestOfflineFirstModelLoading:
         calls: list[dict[str, Any]] = []
 
         class FakeST:
-            def __init__(self, name: str, local_files_only: bool = False) -> None:
-                calls.append({"name": name, "local_files_only": local_files_only})
+            def __init__(
+                self, name: str, device: str | None = None, local_files_only: bool = False
+            ) -> None:
+                calls.append({"name": name, "device": device, "local_files_only": local_files_only})
                 if local_files_only and not cached:
                     raise OSError("not in cache")
                 if not local_files_only and not online:
@@ -121,7 +123,7 @@ class TestOfflineFirstModelLoading:
     def test_cached_model_loads_without_network(self, monkeypatch: pytest.MonkeyPatch) -> None:
         calls = self._install_fake(monkeypatch, cached=True, online=False)
         enc = SentenceTransformerEncoder("mini")
-        assert calls == [{"name": "mini", "local_files_only": True}]
+        assert calls == [{"name": "mini", "device": "cpu", "local_files_only": True}]
         assert enc.dim == 16 and enc.name == "mini"
 
     def test_first_run_downloads(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -135,6 +137,12 @@ class TestOfflineFirstModelLoading:
         self._install_fake(monkeypatch, cached=False, online=False)
         with pytest.raises(ConfigurationError, match="first download"):
             SentenceTransformerEncoder("mini")
+
+    def test_device_is_explicit_on_both_paths(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Hosts that report a GPU (e.g. Hugging Face ZeroGPU) must not get "auto" -> CUDA.
+        calls = self._install_fake(monkeypatch, cached=False, online=True)
+        SentenceTransformerEncoder("mini", device="cpu")
+        assert [c["device"] for c in calls] == ["cpu", "cpu"]
 
     def test_older_library_api_supported(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._install_fake(monkeypatch, cached=True, online=False, new_api=False)

@@ -43,7 +43,7 @@ dir artifacts
 python -m pytest
 ```
 ✅ `artifacts` has `book_index.faiss`, `book_meta.parquet`, `manifest.json`, four `.pkl` files and
-`knn_manifest.json`, and the tests show `528 passed`.
+`knn_manifest.json`, and the tests show `529 passed`.
 No artifacts yet? `python -m bookmind.pipeline.cli download` then
 `python -m bookmind.pipeline.cli all --classifier keyword`.
 
@@ -128,6 +128,7 @@ Changed code or rebuilt the index → run Step 3 again → upload the changed fi
 | `WARNING: … does not support Python 3.12` | Fine in most cases; if the Space then shows a k-NN error, tell us the warning |
 | Space shows **Build error** | **Logs → Build**: copy the last ~30 lines and ask for help |
 | Space shows **Runtime error** | **Logs → Container**: copy the last ~30 lines and ask for help |
+| *No @spaces.GPU function detected during startup* | Fixed in `app.py` (it sends the startup report) — make sure the Space has the latest `app.py` |
 | "Search index not loaded" on the page | The `artifacts` folder didn't upload completely — upload it again |
 | Red **error** next to `.py` / `.json` files while uploading | Your network is cutting requests to huggingface.co — use **Route B (via GitHub)** or a phone hotspot |
 | Space is sleeping | Open the link and wait ~1 min, or click **Restart this Space** |
@@ -209,7 +210,11 @@ hand as **Gradio + ZeroGPU** (Step 4) and re-run. Red cross on **CI**? Run
   datasets, no secrets). Never upload `.env` or tokens.
 - **ZeroGPU** gives the Space a GPU only on request; BookMind never asks for one (MiniLM + FAISS
   answer in milliseconds on CPU). `app.py` contains one placeholder GPU function because ZeroGPU
-  Spaces must declare one at startup — it is never called.
+  Spaces must declare one at startup — it is never called. Because the website is served by
+  uvicorn (not Gradio's `launch()`), `app.py` also sends ZeroGPU's startup report itself; without it
+  the Space stops with *"No @spaces.GPU function detected during startup"*. The embedding model is
+  pinned to the CPU (`BOOKMIND_EMBEDDING_DEVICE=cpu`) because ZeroGPU reports a GPU that is only
+  usable inside GPU functions.
 - **Security on the Space:** production mode (HTTPS-only headers), `/docs` kept on, and two settings
   that are *off* locally: `BOOKMIND_FRAME_ANCESTORS=["https://huggingface.co"]` lets the Space page
   show the site in its frame (instead of `X-Frame-Options: DENY`), and

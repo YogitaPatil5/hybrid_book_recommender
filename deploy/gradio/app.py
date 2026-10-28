@@ -106,6 +106,21 @@ if spaces is not None:
         return None
 
 
+def report_zerogpu_startup() -> bool:
+    """Send ZeroGPU's startup report (the GPU function list) to Hugging Face.
+
+    `spaces` normally sends it from inside Gradio's `demo.launch()`. This app is served by
+    uvicorn instead (so the full website owns "/"), so the report is sent here. Without it
+    the Space stops with "No @spaces.GPU function detected during startup".
+    Returns True when a report was sent (only on ZeroGPU hardware).
+    """
+    startup = getattr(getattr(spaces, "zero", None), "startup", None)
+    if not callable(startup):
+        return False  # not on ZeroGPU (local runs, CPU hardware)
+    startup()
+    return True
+
+
 ALL = "All genres"
 PLACEHOLDER_COVER = (  # no quotes inside: it is used in HTML attributes and in JS
     "data:image/svg+xml;utf8,"
@@ -338,6 +353,8 @@ app = gr.mount_gradio_app(
 if __name__ == "__main__":
     import uvicorn
 
+    if report_zerogpu_startup():
+        print("ZeroGPU startup report sent", flush=True)
     uvicorn.run(
         app,
         host=os.getenv("GRADIO_SERVER_NAME", "0.0.0.0"),  # noqa: S104

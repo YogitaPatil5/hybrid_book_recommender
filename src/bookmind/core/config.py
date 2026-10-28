@@ -88,6 +88,8 @@ class Settings(BaseSettings):
     # ── ML ───────────────────────────────────────────────────────────────────
     embedding_backend: Literal["sentence-transformers", "hashing"] = "sentence-transformers"
     embedding_model: str = Field(default="all-MiniLM-L6-v2", min_length=1)
+    # MiniLM is small and fast on CPU; "cuda" only on a machine with a dedicated GPU.
+    embedding_device: Literal["cpu", "cuda", "mps"] = "cpu"
     embedding_dim: int = Field(default=384, ge=8, le=4096, description="hashing backend only")
     embedding_cache_size: int = Field(default=2048, ge=0, le=1_000_000)
     enable_knn: bool = True

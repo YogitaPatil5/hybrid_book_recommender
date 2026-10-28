@@ -86,7 +86,7 @@ class HashingEncoder:
 class SentenceTransformerEncoder:
     """Wrapper around ``sentence_transformers.SentenceTransformer``."""
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, device: str = "cpu"):
         try:
             from sentence_transformers import SentenceTransformer
         except ImportError as exc:  # pragma: no cover - depends on environment
@@ -98,11 +98,13 @@ class SentenceTransformerEncoder:
         try:
             # Offline-first: use the locally cached model without any network
             # calls (no need to set HF_HUB_OFFLINE by hand).
-            self._model = SentenceTransformer(model_name, local_files_only=True)
+            # The device is explicit: on hosts that *report* a GPU (e.g. Hugging Face
+            # ZeroGPU) "auto" would pick CUDA, which is only usable inside special calls.
+            self._model = SentenceTransformer(model_name, device=device, local_files_only=True)
         except Exception:
             log.info("Model not cached yet — downloading '%s' (one-time, ~80 MB)", model_name)
             try:
-                self._model = SentenceTransformer(model_name)
+                self._model = SentenceTransformer(model_name, device=device)
             except Exception as exc:
                 raise ConfigurationError(
                     f"Could not load embedding model '{model_name}': {exc}. "
@@ -171,4 +173,6 @@ def build_encoder(settings: Settings, model_name: str | None = None) -> Encoder:
     """Factory: create the encoder configured in settings."""
     if settings.embedding_backend == "hashing":
         return HashingEncoder(dim=settings.embedding_dim)
-    return SentenceTransformerEncoder(model_name or settings.embedding_model)  # pragma: no cover
+    return SentenceTransformerEncoder(  # pragma: no cover
+        model_name or settings.embedding_model, device=settings.embedding_device
+    )

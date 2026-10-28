@@ -13,7 +13,7 @@ genre or a free-text description** ("a slow-burn mystery set in winter"), browse
 **Free and local** — no OpenAI or any paid API key. After the first download it runs fully offline.
 
 Built with FastAPI · Pydantic · Sentence-Transformers · FAISS · scikit-learn · pandas.
-**528 automated tests · ~99% coverage · strict type checking · Docker · CI.**
+**529 automated tests · ~99% coverage · strict type checking · Docker · CI.**
 
 📚 Documentation:
 [`docs/EXPLAINER.html`](docs/EXPLAINER.html) (learn & rebuild the project — open in a browser) ·
@@ -107,7 +107,7 @@ Then create your settings file (defaults work as-is):
 ```cmd
 python -m pytest
 ```
-✅ Expected: **`528 passed`**. The tests run offline with small built-in sample data.
+✅ Expected: **`529 passed`**. The tests run offline with small built-in sample data.
 
 ## Step 5 — Download the datasets (free, via kagglehub)
 
@@ -182,7 +182,7 @@ first) and replace `8000` with the port the app printed.
 |---|---|---|
 | 1 | `.venv\Scripts\activate` | Prompt starts with `(.venv)` |
 | 2 | `python -m pip install -e . --no-deps` | `Successfully installed bookmind-2.2.0` |
-| 3 | `python -m pytest` | `528 passed` |
+| 3 | `python -m pytest` | `529 passed` |
 | 4 | `python -m ruff check src tests` | `All checks passed!` |
 | 5 | `python -m mypy` | `Success: no issues found` |
 | 6 | `dir data\bx` · `dir artifacts` *(mac/Linux: `ls`)* | 3 `BX-*.csv` files · `book_index.faiss`, `manifest.json`, 4 `.pkl`, `knn_manifest.json` |
@@ -300,7 +300,7 @@ implicit interactions too few readers remain.)
 | Observability | `/health/live`, `/health/ready` (per-component), Prometheus `/metrics` |
 | Security | Content-Security-Policy (no inline scripts), HSTS in production, trusted hosts, CORS allow-list, rate limiting, SHA-256 checksums on all model files |
 | Resilience | Degraded mode instead of crashing; Ollama retries + fallback; atomic writes; resumable jobs; offline-first model loading; automatic free-port selection in development |
-| Quality | 528 tests (unit, integration, end-to-end), ~99% coverage, ruff, strict mypy, pre-commit, GitHub Actions CI |
+| Quality | 529 tests (unit, integration, end-to-end), ~99% coverage, ruff, strict mypy, pre-commit, GitHub Actions CI |
 | Deployment | Multi-stage non-root Dockerfile, gunicorn + uvicorn workers, docker-compose with Redis |
 
 ---
@@ -341,7 +341,7 @@ bookmind_pro/
 │   ├── pipeline/              # cli, download, prepare, classify, build_index, knn, io
 │   ├── templates/             # Jinja2 pages
 │   └── static/                # css/style.css (themes), js/theme.js, main.js, autocomplete.js, img/
-├── tests/                     # unit/, integration/, fixtures/  (528 tests)
+├── tests/                     # unit/, integration/, fixtures/  (529 tests)
 ├── docs/                      # EXPLAINER.html, ARCHITECTURE.md, REVIEW_AND_CHANGES.md,
 │                              # SUBMISSION_GUIDE.md, ROADMAP.md, DEPLOY_HUGGINGFACE.md
 ├── scripts/                   # setup.ps1, setup.sh, prepare_hf_space.py (builds the Hugging Face upload folder)
@@ -384,7 +384,7 @@ All settings are environment variables prefixed `BOOKMIND_` — set them in `.en
 ## Quality checks (same as CI)
 
 ```cmd
-python -m pytest                                   # 528 tests
+python -m pytest                                   # 529 tests
 python -m pytest --cov --cov-report=html           # coverage → htmlcov/index.html
 python -m ruff check src tests                     # lint
 python -m mypy                                     # strict type checking
