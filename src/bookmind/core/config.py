@@ -105,6 +105,12 @@ class Settings(BaseSettings):
     )
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:8000"])
     trusted_hosts: list[str] = Field(default_factory=lambda: ["*"])
+    # Sites allowed to show these pages in an <iframe> (CSP frame-ancestors). Empty = nobody
+    # (X-Frame-Options: DENY). The Hugging Face Space sets ["https://huggingface.co"].
+    frame_ancestors: list[str] = Field(default_factory=list)
+    # Paths of sub-apps mounted next to the site (e.g. a Gradio demo at "/demo") that bring
+    # their own scripts: they get no CSP from this app and are not rate limited.
+    mounted_app_paths: list[str] = Field(default_factory=list)
 
     # ── Pipeline ─────────────────────────────────────────────────────────────
     ollama_model: str = "llama3.2"
@@ -121,6 +127,25 @@ class Settings(BaseSettings):
         if parts[1].strip() not in {"second", "minute", "hour", "day"}:
             raise ValueError("rate_limit period must be one of second|minute|hour|day")
         return v
+
+    @field_validator("frame_ancestors")
+    @classmethod
+    def _validate_frame_ancestors(cls, v: list[str]) -> list[str]:
+        for item in v:
+            if item != "'self'" and not item.startswith("https://"):
+                raise ValueError("frame_ancestors entries must be https:// origins or 'self'")
+            if any(ch in item for ch in " ;,"):
+                raise ValueError("frame_ancestors entries must be single origins")
+        return v
+
+    @field_validator("mounted_app_paths")
+    @classmethod
+    def _validate_mounted_paths(cls, v: list[str]) -> list[str]:
+        reserved = ("/", "/api", "/static", "/health", "/metrics", "/docs")
+        for path in v:
+            if not path.startswith("/") or path.rstrip("/") in ("", *reserved):
+                raise ValueError(f"mounted_app_paths entry {path!r} is invalid or reserved")
+        return [p.rstrip("/") for p in v]
 
     @model_validator(mode="after")
     def _cross_field_checks(self) -> Settings:

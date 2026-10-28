@@ -5,14 +5,15 @@ You get a permanent link such as `https://yourname-bookmind.hf.space` that keeps
 laptop is off.
 
 > **Important (2026):** on free Hugging Face accounts, **Docker Spaces are now paid** and new free
-> accounts can only pick **Gradio + ZeroGPU** hardware. So the free deployment uses a small **Gradio
-> front end** (`deploy/gradio/app.py`) on top of the *same* search and recommendation engines.
-> Your FastAPI website, REST API and tests are unchanged and still run locally with `run.bat`.
+> accounts can only pick **Gradio + ZeroGPU** hardware. A Gradio Space simply runs `python app.py`
+> and shows whatever answers on port 7860 — so `deploy/gradio/app.py` serves your **complete FastAPI
+> website** (same pages, light/dark theme, dropdowns, REST API, `/docs`) and mounts a small Gradio
+> screen at **`/demo`**, which the free ZeroGPU hardware expects.
 
 | | Free Gradio Space |
 |---|---|
 | Cost | Free, no credit card |
-| What visitors see | A Gradio page with **Search**, **Recommend** and **About** tabs (light/dark automatic) |
+| What visitors see | **Your BookMind website** — identical to `run.bat` locally (Gradio version at `/demo`) |
 | Engines | Same as the full app: MiniLM + FAISS semantic search, k-NN collaborative filtering, hybrid fallback |
 | Always on? | Sleeps after ~48 h without visitors; the next visit wakes it (1–2 min) |
 | Link | `https://<username>-bookmind.hf.space` |
@@ -42,7 +43,7 @@ dir artifacts
 python -m pytest
 ```
 ✅ `artifacts` has `book_index.faiss`, `book_meta.parquet`, `manifest.json`, four `.pkl` files and
-`knn_manifest.json`, and the tests show `517 passed`.
+`knn_manifest.json`, and the tests show `528 passed`.
 No artifacts yet? `python -m bookmind.pipeline.cli download` then
 `python -m bookmind.pipeline.cli all --classifier keyword`.
 
@@ -52,7 +53,8 @@ No artifacts yet? `python -m bookmind.pipeline.cli download` then
 python -m pip install gradio==6.30.0
 python deploy\gradio\app.py
 ```
-Open **http://127.0.0.1:7860** — this is exactly what the Space will show. Ctrl+C to stop.
+Open **http://127.0.0.1:7860** (your website) and **http://127.0.0.1:7860/demo** (Gradio) — exactly
+what the Space will show. Ctrl+C to stop.
 
 ## Step 3 — Build the upload folder
 
@@ -64,10 +66,10 @@ python scripts\prepare_hf_space.py
 
 | Item | What it is |
 |---|---|
-| `app.py` | The Gradio page |
+| `app.py` | Starts your FastAPI website (+ Gradio at `/demo`) on port 7860 |
 | `README.md` | Space settings (Gradio 6.30.0, Python 3.12) + description |
 | `requirements.txt` | Libraries pinned to the **same versions as your PC** — the k-NN files only load with the pandas/scikit-learn they were trained with |
-| `bookmind.zip` | Your search/recommendation code (`core`, `ml`, `schemas`, `services`); Python imports it straight from the zip |
+| `bookmind.zip` | Your whole `bookmind` package — code, HTML templates, CSS/JS; `app.py` unpacks it at startup |
 | 8 artifact files | `manifest.json`, `book_index.faiss`, `book_meta.parquet`, `knn_manifest.json` and four `.pkl` files (~26 MB) |
 
 Your `.env`, `.venv`, `data`, logs and tests are never included.
@@ -208,6 +210,11 @@ hand as **Gradio + ZeroGPU** (Step 4) and re-run. Red cross on **CI**? Run
 - **ZeroGPU** gives the Space a GPU only on request; BookMind never asks for one (MiniLM + FAISS
   answer in milliseconds on CPU). `app.py` contains one placeholder GPU function because ZeroGPU
   Spaces must declare one at startup — it is never called.
+- **Security on the Space:** production mode (HTTPS-only headers), `/docs` kept on, and two settings
+  that are *off* locally: `BOOKMIND_FRAME_ANCESTORS=["https://huggingface.co"]` lets the Space page
+  show the site in its frame (instead of `X-Frame-Options: DENY`), and
+  `BOOKMIND_MOUNTED_APP_PATHS=["/demo"]` leaves Gradio's own scripts alone. Links are `https://`
+  because `app.py` trusts the Space proxy's `X-Forwarded-Proto`.
 - To take it offline: Space **Settings → Pause** (or **Delete this Space** at the bottom).
 
 ## Optional — upload from the terminal instead of the browser

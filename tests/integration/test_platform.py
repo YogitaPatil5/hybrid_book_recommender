@@ -169,3 +169,58 @@ class TestRateLimit:
             # Probes are exempt.
             assert all(c.get("/health/live").status_code == 200 for _ in range(6))
             assert all(c.get("/health/ready").status_code == 200 for _ in range(6))
+
+
+class TestEmbeddingAndMountedApps:
+    """Settings used by the Hugging Face Space: framing by huggingface.co and a mounted /demo."""
+
+    def test_default_forbids_framing(self, workdir: Path) -> None:
+        with TestClient(create_app(make_settings(workdir))) as c:
+            r = c.get("/health/live")
+        assert r.headers["X-Frame-Options"] == "DENY"
+        assert "frame-ancestors 'none'" in r.headers["Content-Security-Policy"]
+
+    def test_frame_ancestors_allow_hugging_face(self, workdir: Path) -> None:
+        s = make_settings(workdir, frame_ancestors=["https://huggingface.co"])
+        with TestClient(create_app(s)) as c:
+            r = c.get("/health/live")
+        assert "X-Frame-Options" not in r.headers  # CSP frame-ancestors replaces it
+        csp = r.headers["Content-Security-Policy"]
+        assert "frame-ancestors https://huggingface.co" in csp and "'none'" not in csp
+        assert "script-src 'self'" in csp  # the rest of the policy is unchanged
+
+    @pytest.mark.parametrize(
+        "bad", [["http://huggingface.co"], ["https://a.com https://b.com"], ["*"]]
+    )
+    def test_frame_ancestors_validation(self, workdir: Path, bad: list[str]) -> None:
+        with pytest.raises(ValueError, match="frame_ancestors"):
+            make_settings(workdir, frame_ancestors=bad)
+
+    def test_mounted_app_gets_no_csp_and_no_rate_limit(self, workdir: Path) -> None:
+        s = make_settings(workdir, mounted_app_paths=["/demo/"], rate_limit="2/minute")
+        assert s.mounted_app_paths == ["/demo"]
+        app = create_app(s)
+        sub = APIRouter()
+
+        @sub.get("/demo/page")
+        def page() -> dict[str, str]:
+            return {"ok": "yes"}
+
+        @sub.get("/democracy")
+        def other() -> dict[str, str]:
+            return {"ok": "no"}
+
+        app.include_router(sub)
+        with TestClient(app) as c:
+            demo = [c.get("/demo/page") for _ in range(4)]
+            other_page = c.get("/democracy")
+        assert all(r.status_code == 200 for r in demo)  # not rate limited
+        assert "Content-Security-Policy" not in demo[0].headers
+        assert demo[0].headers["X-Content-Type-Options"] == "nosniff"  # other headers kept
+        # a path that merely starts with the same letters is NOT exempt
+        assert "Content-Security-Policy" in other_page.headers
+
+    @pytest.mark.parametrize("bad", [["/"], ["/api"], ["/static/"], ["demo"]])
+    def test_mounted_paths_validation(self, workdir: Path, bad: list[str]) -> None:
+        with pytest.raises(ValueError, match="mounted_app_paths"):
+            make_settings(workdir, mounted_app_paths=bad)

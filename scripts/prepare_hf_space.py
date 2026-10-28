@@ -46,7 +46,7 @@ SPACE_FILES = ("Dockerfile", "README.md")  # docker only, from deploy/huggingfac
 # ── Gradio Space ─────────────────────────────────────────────────────────────
 GRADIO_SDK_VERSION = "6.30.0"  # the version the Gradio app was tested with
 SPACE_PYTHON = "3.12"  # supported by Hugging Face ZeroGPU hardware
-GRADIO_PACKAGES = ("core", "ml", "schemas", "services")  # all that app.py imports
+GRADIO_PACKAGES = ("core", "ml", "schemas", "services")  # service layer (Gradio screen)
 # Pickled k-NN files must be read by the same versions that wrote them -> exact pins.
 EXACT_PINS = ("numpy", "pandas", "scikit-learn", "scipy")
 OTHER_PINS = (
@@ -55,6 +55,8 @@ OTHER_PINS = (
     "sentence-transformers",
     "pydantic",
     "pydantic-settings",
+    "prometheus-client",  # website: /metrics
+    "limits",  # website: rate limiting
 )
 FALLBACK_REQUIREMENTS = {  # used when a library is not installed locally
     "numpy": "numpy>=1.26,<3.0",
@@ -66,6 +68,8 @@ FALLBACK_REQUIREMENTS = {  # used when a library is not installed locally
     "sentence-transformers": "sentence-transformers>=3.0,<6.0",
     "pydantic": "pydantic>=2.7,<3.0",
     "pydantic-settings": "pydantic-settings>=2.3,<3.0",
+    "prometheus-client": "prometheus-client>=0.20,<1.0",
+    "limits": "limits>=3.10,<6.0",
 }
 HF_FILE_LIMIT_MB = 10  # bigger files are stored with Git LFS (the web uploader does this)
 
@@ -242,12 +246,16 @@ def _copy_artifacts(artifacts: Path, dest: Path, files: list[str]) -> None:
 
 
 def _zip_package(package: Path, target: Path) -> None:
-    """bookmind/__init__.py + the service-layer packages, as an importable zip."""
+    """The whole `bookmind` package (code, HTML templates, CSS/JS) as one zip file.
+
+    app.py unpacks it at startup: the website needs real template/static files.
+    """
     with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        zf.write(package / "__init__.py", "bookmind/__init__.py")
-        for sub in GRADIO_PACKAGES:
-            for path in sorted((package / sub).rglob("*.py")):
-                zf.write(path, f"bookmind/{path.relative_to(package).as_posix()}")
+        for path in sorted(package.rglob("*")):
+            rel = path.relative_to(package)
+            if path.is_dir() or "__pycache__" in rel.parts or path.suffix == ".pyc":
+                continue
+            zf.write(path, f"bookmind/{rel.as_posix()}")
 
 
 def _prepare_gradio(root: Path, out: Path, artifact_files: list[str]) -> list[str]:

@@ -1,13 +1,16 @@
 """
-BookMind Pro — Gradio front end (for free Hugging Face Spaces).
+BookMind Pro on Hugging Face Spaces — the full FastAPI website, on free hardware.
 
-This file is only a *new screen* on top of the existing service layer: it calls
-the same SemanticSearchEngine, KnnRecommender and hybrid ``find_similar`` that
-the FastAPI website and REST API use. No search or recommendation logic lives here.
+Free Hugging Face accounts can only create *Gradio* Spaces (Docker is paid), and a Gradio
+Space simply runs ``python app.py`` and shows whatever answers on port 7860. So this file
+serves the **complete BookMind website** (the same pages, light/dark theme, popular-books
+dropdown, REST API and /docs as `run.bat` locally) and mounts a small Gradio screen at
+``/demo``, which keeps the ZeroGPU hardware happy. No search or recommendation logic
+lives here: both front ends call the same service layer.
 
 Run locally (inside the project venv, after building artifacts/):
     python -m pip install gradio
-    python deploy/gradio/app.py            # http://127.0.0.1:7860
+    python deploy/gradio/app.py            # http://127.0.0.1:7860  (Gradio at /demo)
 """
 
 # ruff: noqa: E501, RUF001  (long Markdown table lines and emoji tab labels are intentional)
@@ -15,18 +18,42 @@ from __future__ import annotations
 
 import html
 import os
+import shutil
 import sys
+import tempfile
+import zipfile
 from pathlib import Path
 from typing import Any
 
 HERE = Path(__file__).resolve().parent
 
+
+def extract_package(archive: Path, target: Path) -> Path:
+    """Unpack bookmind.zip (code + HTML templates + CSS/JS) to a real folder.
+
+    The website needs real files for Jinja2 templates and static assets, which Python
+    cannot serve from inside a zip. Members are checked so nothing can be written outside
+    ``target`` (zip-slip protection).
+    """
+    if target.exists():
+        shutil.rmtree(target)
+    target.mkdir(parents=True)
+    root = target.resolve()
+    with zipfile.ZipFile(archive) as zf:
+        for member in zf.namelist():
+            destination = (target / member).resolve()
+            if root != destination and root not in destination.parents:
+                raise RuntimeError(f"Unsafe path in {archive.name}: {member}")
+        zf.extractall(target)
+    return target
+
+
 # On the Space everything sits flat next to this file (no folders, so the browser
-# uploader accepts it): `bookmind.zip` is the code, imported straight from the zip
-# by Python's zipimport, and the artifact files (manifest.json, book_index.faiss, ...).
-# Locally (deploy/gradio/app.py) fall back to the project's src/ and artifacts/.
+# uploader accepts it): `bookmind.zip` is the code, and the artifact files
+# (manifest.json, book_index.faiss, ...). Locally fall back to src/ and artifacts/.
 if (HERE / "bookmind.zip").exists():
-    sys.path.insert(0, str(HERE / "bookmind.zip"))
+    runtime = Path(tempfile.gettempdir()) / "bookmind_runtime"
+    sys.path.insert(0, str(extract_package(HERE / "bookmind.zip", runtime)))
 elif (HERE / "bookmind").is_dir():
     sys.path.insert(0, str(HERE))
 else:
@@ -35,7 +62,17 @@ for candidate in (HERE, HERE / "artifacts", HERE.parent.parent / "artifacts"):
     if (candidate / "manifest.json").exists():
         os.environ.setdefault("BOOKMIND_ARTIFACTS_DIR", str(candidate))
         break
-os.environ.setdefault("BOOKMIND_LOG_TO_FILE", "false")
+
+# Settings for the public demo (each can be overridden in the Space's Settings -> Variables).
+SPACE_DEFAULTS = {
+    "BOOKMIND_ENV": "production",  # HTTPS-only headers, no debug
+    "BOOKMIND_ENABLE_DOCS": "true",  # keep /docs for the mentor
+    "BOOKMIND_LOG_TO_FILE": "false",  # Space logs are read from the console
+    "BOOKMIND_FRAME_ANCESTORS": '["https://huggingface.co"]',  # the Space page embeds us
+    "BOOKMIND_MOUNTED_APP_PATHS": '["/demo"]',  # Gradio brings its own scripts
+}
+for key, value in SPACE_DEFAULTS.items():
+    os.environ.setdefault(key, value)
 
 import gradio as gr  # noqa: E402
 
@@ -43,6 +80,7 @@ from bookmind import __version__  # noqa: E402
 from bookmind.core.config import get_settings  # noqa: E402
 from bookmind.core.exceptions import BookMindError  # noqa: E402
 from bookmind.core.logging import setup_logging  # noqa: E402
+from bookmind.main import create_app  # noqa: E402
 from bookmind.schemas.book import Book, PopularBook  # noqa: E402
 from bookmind.services.recommendation import (  # noqa: E402
     catalogue_stats,
@@ -216,7 +254,7 @@ def about_markdown() -> str:
 **Hybrid:** *Recommend* uses collaborative filtering when the title is in the ratings data, otherwise semantic similarity.
 
 Built with Python · Sentence-Transformers · FAISS · scikit-learn · pandas · Gradio.
-The full project also has a FastAPI website and REST API, 480+ automated tests, Docker and CI.
+The full project also has a FastAPI website and REST API, 500+ automated tests, Docker and CI.
 No paid APIs — everything is free and open source. Version {__version__}.
 """
 
@@ -286,10 +324,26 @@ def build_demo() -> gr.Blocks:
 
 demo = build_demo()
 
+# The website (FastAPI) owns "/", "/search", "/recommend", "/api/v1/...", "/docs", "/health/...";
+# the Gradio screen lives at "/demo". Both share the engines loaded above.
+app = create_app(settings, registry=registry)
+app = gr.mount_gradio_app(
+    app,
+    demo,
+    path="/demo",
+    theme=gr.themes.Soft(primary_hue="indigo", neutral_hue="slate"),
+    css=CSS,
+)
+
 if __name__ == "__main__":
-    demo.launch(
-        server_name=os.getenv("GRADIO_SERVER_NAME", "0.0.0.0"),  # noqa: S104
-        server_port=int(os.getenv("GRADIO_SERVER_PORT", "7860")),
-        theme=gr.themes.Soft(primary_hue="indigo", neutral_hue="slate"),
-        css=CSS,
+    import uvicorn
+
+    uvicorn.run(
+        app,
+        host=os.getenv("GRADIO_SERVER_NAME", "0.0.0.0"),  # noqa: S104
+        port=int(os.getenv("GRADIO_SERVER_PORT", "7860")),
+        proxy_headers=True,  # Hugging Face's proxy terminates HTTPS ...
+        forwarded_allow_ips="*",  # ... so trust its X-Forwarded-* (https links, visitor IPs)
+        log_config=None,  # keep BookMind's logging format
+        access_log=False,
     )

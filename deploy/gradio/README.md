@@ -21,6 +21,7 @@ Search books by **meaning** ("a slow-burn mystery set in winter"), browse a genr
 - **Hybrid:** "Recommend" uses collaborative filtering when the title is in the ratings data,
   otherwise semantic similarity
 
-This Space is the Gradio front end of the project. The full project also includes a FastAPI
-website and REST API, an offline data pipeline, 480+ automated tests, Docker and CI.
+This Space runs the project's FastAPI website (search, genre browsing, recommendations,
+REST API and `/docs`); a Gradio version of the screens is at `/demo`. The full project also
+includes an offline data pipeline, 500+ automated tests, Docker and CI/CD.
 Everything is free and open source; no paid API keys.

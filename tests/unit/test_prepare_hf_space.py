@@ -96,16 +96,41 @@ class TestPrepareGradio:
         assert "{" not in card.split("---")[1]  # every placeholder filled
         assert "gr.Blocks" in (out / "app.py").read_text(encoding="utf-8")
 
-    def test_zip_contains_only_service_layer_python(self, tmp_path: Path) -> None:
+    def test_zip_contains_whole_package_without_caches(self, tmp_path: Path) -> None:
         root = _fake_project(tmp_path)
+        pkg = root / "src" / "bookmind"
+        (pkg / "templates").mkdir()
+        (pkg / "templates" / "base.html").write_text("<html></html>")
+        (pkg / "static" / "css").mkdir(parents=True)
+        (pkg / "static" / "css" / "style.css").write_text("body{}")
         out = tmp_path / "space"
         hf.prepare(root, out)
         with zipfile.ZipFile(out / "bookmind.zip") as zf:
             names = set(zf.namelist())
         assert "bookmind/__init__.py" in names
-        assert {n.split("/")[1] for n in names if n.count("/") == 2} == set(hf.GRADIO_PACKAGES)
-        assert all(n.endswith(".py") for n in names)
-        assert not any(part in n for n in names for part in ("api/", "web/", "pipeline/"))
+        assert "bookmind/templates/base.html" in names
+        assert "bookmind/static/css/style.css" in names
+        assert {n.split("/")[1] for n in names if n.count("/") == 2} >= {
+            *hf.GRADIO_PACKAGES,
+            "api",
+            "web",
+        }
+        assert not any("__pycache__" in n or n.endswith(".pyc") for n in names)
+
+    def test_real_package_zip_has_templates_and_static(self, tmp_path: Path) -> None:
+        hf._zip_package(ROOT / "src" / "bookmind", tmp_path / "b.zip")
+        with zipfile.ZipFile(tmp_path / "b.zip") as zf:
+            names = set(zf.namelist())
+        for needed in (
+            "bookmind/main.py",
+            "bookmind/templates/base.html",
+            "bookmind/templates/index.html",
+            "bookmind/static/css/style.css",
+            "bookmind/static/js/theme.js",
+            "bookmind/static/js/autocomplete.js",
+            "bookmind/static/img/no-cover.svg",
+        ):
+            assert needed in names, needed
 
     def test_zip_is_importable(self, tmp_path: Path) -> None:
         out = tmp_path / "space"

@@ -145,7 +145,7 @@ summary{cursor:pointer;font-weight:600}
   <b>local LLM</b> that tags genres offline. Everything is free and runs on a laptop.</p>
   <p>This guide explains <i>what</i> each piece does, <i>why</i> it was chosen over the alternatives, and <i>how</i> it works
   inside, so you can rebuild the project from an empty folder instead of copying it.</p>
-  <div class="pills"><span class="pill">Python 3.10–3.13</span><span class="pill">FastAPI</span><span class="pill">Sentence-Transformers</span><span class="pill">FAISS</span><span class="pill">scikit-learn</span><span class="pill">pandas</span><span class="pill">517 tests</span><span class="pill">Docker · CI</span></div>
+  <div class="pills"><span class="pill">Python 3.10–3.13</span><span class="pill">FastAPI</span><span class="pill">Sentence-Transformers</span><span class="pill">FAISS</span><span class="pill">scikit-learn</span><span class="pill">pandas</span><span class="pill">528 tests</span><span class="pill">Docker · CI</span></div>
 </div>
 
 <section id="how">
@@ -576,7 +576,7 @@ Open the real file next to it.</p>
 <div class="card"><h4>Fakes, not mocks of everything</h4><code>HashingEncoder</code> replaces MiniLM; <code>tests/bx_fixture.py</code> generates small Book-Crossing files with known clusters (<code>cluster_of</code>), so tests can assert that "a fantasy book's neighbours are fantasy books". FAISS and scikit-learn run for real.</div>
 </div>
 <p>Key fixtures in <code>tests/conftest.py</code>: <code>make_settings(**overrides)</code> (validated settings pointing at a temp dir), <code>built_dir</code> (a ready artifacts folder), <code>write_knn_artifacts</code>, and clients for the API. Each test gets a fresh app through <code>create_app(settings, registry)</code>.</p>
-<pre><code>python -m pytest                          <span class="c"># 517 tests, ~99% coverage (CI fails below 85%)</span>
+<pre><code>python -m pytest                          <span class="c"># 528 tests, ~99% coverage (CI fails below 85%)</span>
 python -m pytest tests/unit -q            <span class="c"># just the fast unit tests</span>
 python -m pytest -k autocomplete          <span class="c"># tests whose name matches</span>
 python -m pytest --cov --cov-report=html  <span class="c"># browse htmlcov/index.html</span></code></pre>

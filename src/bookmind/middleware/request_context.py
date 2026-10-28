@@ -78,9 +78,25 @@ def _route_template(request: Request) -> str:
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: ASGIApp, *, enable_hsts: bool = False):
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        enable_hsts: bool = False,
+        frame_ancestors: tuple[str, ...] = (),
+        csp_exempt_prefixes: tuple[str, ...] = (),
+    ):
         super().__init__(app)
         self.enable_hsts = enable_hsts
+        self.frame_ancestors = frame_ancestors
+        self.csp_exempt_prefixes = csp_exempt_prefixes
+        self.csp = (
+            CONTENT_SECURITY_POLICY.replace(
+                "frame-ancestors 'none'", "frame-ancestors " + " ".join(frame_ancestors)
+            )
+            if frame_ancestors
+            else CONTENT_SECURITY_POLICY
+        )
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
@@ -128,12 +144,16 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 
     def _security_headers(self, request: Request, response: Response) -> None:
         headers = response.headers
-        is_docs = request.url.path.startswith(DOCS_PATHS)
-        headers.setdefault(
-            "Content-Security-Policy", DOCS_CSP if is_docs else CONTENT_SECURITY_POLICY
+        path = request.url.path
+        mounted = bool(self.csp_exempt_prefixes) and any(
+            path == p or path.startswith(p + "/") for p in self.csp_exempt_prefixes
         )
+        if not mounted:  # a mounted sub-app (e.g. Gradio) ships its own inline scripts
+            is_docs = path.startswith(DOCS_PATHS)
+            headers.setdefault("Content-Security-Policy", DOCS_CSP if is_docs else self.csp)
         headers.setdefault("X-Content-Type-Options", "nosniff")
-        headers.setdefault("X-Frame-Options", "DENY")
+        if not self.frame_ancestors:  # CSP frame-ancestors replaces X-Frame-Options
+            headers.setdefault("X-Frame-Options", "DENY")
         headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
         if self.enable_hsts:

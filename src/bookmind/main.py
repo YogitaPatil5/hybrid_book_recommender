@@ -28,7 +28,7 @@ from bookmind.api.errors import register_exception_handlers
 from bookmind.api.v1 import routes as api_v1
 from bookmind.core.config import Settings, get_settings
 from bookmind.core.logging import setup_logging
-from bookmind.middleware.rate_limit import RateLimitMiddleware
+from bookmind.middleware.rate_limit import EXEMPT_PREFIXES, RateLimitMiddleware
 from bookmind.middleware.request_context import RequestContextMiddleware
 from bookmind.services.registry import ServiceRegistry
 from bookmind.web import routes as web
@@ -89,6 +89,7 @@ def create_app(
         limit=settings.rate_limit,
         storage_uri=settings.rate_limit_storage_uri,
         enabled=settings.rate_limit_enabled,
+        exempt_prefixes=(*EXEMPT_PREFIXES, *settings.mounted_app_paths),
     )
     app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(
@@ -99,7 +100,12 @@ def create_app(
         expose_headers=["X-Request-ID"],
     )
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts)
-    app.add_middleware(RequestContextMiddleware, enable_hsts=settings.is_production)
+    app.add_middleware(
+        RequestContextMiddleware,
+        enable_hsts=settings.is_production,
+        frame_ancestors=tuple(settings.frame_ancestors),
+        csp_exempt_prefixes=tuple(settings.mounted_app_paths),
+    )
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     app.include_router(health.router)
